@@ -5,15 +5,21 @@ from io import BytesIO
 import base64
 import time
 import random
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
 from supabase import create_client, Client
 
-# --- GİZLİ BİLGİLER (SECRETS) ---
+# --- GİZLİ BİLGİLERİ ÇEKME ---
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    EMAIL_USER = st.secrets["EMAIL_USER"]
+    EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
 except:
-    st.error("⚠️ API Anahtarları bulunamadı. Lütfen Streamlit Secrets ayarlarını kontrol et.")
+    st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını (Email dahil) kontrol et.")
     st.stop()
 
 # --- SAYFA AYARLARI ---
@@ -34,113 +40,114 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS & TASARIM BÜYÜSÜ (PREMIUM UI) ---
+# --- CSS TASARIM (DÜZELTİLMİŞ) ---
 st.markdown("""
 <style>
-    /* Google Fonts - Inter */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
+    /* Genel Ayarlar */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        background-color: #FAFAFA; /* Hafif kırık beyaz */
+        background-color: #FAFAFA;
         color: #111;
     }
 
-    /* Başlık Stili */
-    .main-title {
-        font-size: 3rem;
-        font-weight: 800;
-        text-align: center;
-        background: -webkit-linear-gradient(45deg, #111, #555);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
-        letter-spacing: -1px;
+    /* INPUT ALANLARI DÜZELTMESİ (ÖNEMLİ) */
+    /* Yazı alanlarının arka planını beyaz, yazısını siyah yapıyoruz */
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+        background-color: #FFFFFF !important; 
+        color: #000000 !important;
+        border: 1px solid #d1d1d1 !important;
+        border-radius: 8px !important;
     }
     
-    .sub-title {
+    /* Placeholder (ipucu) yazısı rengi */
+    ::placeholder {
+        color: #888 !important;
+        opacity: 1;
+    }
+
+    /* Başlıklar */
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 800;
         text-align: center;
-        color: #666;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-        font-weight: 300;
-    }
-
-    /* Kredi Rozeti */
-    .credit-badge {
-        background-color: #fff;
-        border: 1px solid #eaeaea;
+        margin-bottom: 0.5rem;
         color: #111;
-        padding: 8px 16px;
-        border-radius: 99px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        display: inline-block;
     }
-
-    /* Butonlar (Apple Style) */
+    
+    /* Butonlar */
     .stButton > button {
         background-color: #111 !important;
         color: white !important;
-        border-radius: 12px !important;
-        padding: 12px 24px !important;
+        border-radius: 10px !important;
+        padding: 10px 20px !important;
         border: none !important;
         font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
     }
-    
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0,0,0,0.2) !important;
         background-color: #333 !important;
-    }
-
-    /* Input Alanları */
-    .stTextInput > div > div > input, .stTextArea > div > div > textarea {
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 10px;
-        font-size: 1rem;
+        transform: translateY(-2px);
     }
     
-    .stSelectbox > div > div {
-        background-color: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        color: #111;
-    }
-
-    /* Kart Görünümü (Tasarım Sonucu) */
+    /* Kart Tasarımı */
     .design-card {
         background: white;
         padding: 20px;
-        border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         text-align: center;
         margin-top: 20px;
-        border: 1px solid #f0f0f0;
+        border: 1px solid #eaeaea;
     }
-    
-    /* Streamlit Logolarını Gizle */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    
 </style>
 """, unsafe_allow_html=True)
 
 # --- FONKSİYONLAR ---
 
+def send_email_with_design(to_email, img_buffer, prompt):
+    """Müşteriye tasarımı e-posta ile gönderir."""
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_USER
+    msg['To'] = to_email
+    msg['Subject'] = "Your Fallink Tattoo Design is Ready! ✒️"
+
+    body = f"""
+    <html>
+      <body>
+        <h2>Your Design is Here!</h2>
+        <p>Here is the AI-generated tattoo stencil you created with Fallink.</p>
+        <p><strong>Idea:</strong> {prompt}</p>
+        <br>
+        <p>See you at the studio!</p>
+        <p><em>Fallink Team</em></p>
+      </body>
+    </html>
+    """
+    msg.attach(MIMEText(body, 'html'))
+
+    # Resmi Ekle
+    image_data = img_buffer.getvalue()
+    image = MIMEImage(image_data, name="fallink_design.png")
+    msg.attach(image)
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True, "Email sent successfully!"
+    except Exception as e:
+        return False, str(e)
+
 def check_user_credits(username):
     try:
         response = supabase.table("users").select("*").eq("username", username).execute()
-        if response.data and len(response.data) > 0:
+        if response.data:
             return response.data[0]["credits"]
-        else:
-            return -1
+        return -1
     except:
         return -1
 
@@ -156,39 +163,16 @@ def get_image_download_link(img, filename, text):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    href = f'''
-    <a href="data:file/png;base64,{img_str}" download="{filename}" 
-    style="text-decoration:none; display:inline-block; margin-top:10px; background-color:#F5F5F7; color:#111; padding:10px 20px; border-radius:10px; font-weight:600; border:1px solid #d1d1d1; transition:0.2s;">
-    📥 {text}
-    </a>
-    '''
-    return href
+    return f'<a href="data:file/png;base64,{img_str}" download="{filename}" style="text-decoration:none; color:#007AFF; font-weight:600;">📥 {text}</a>'
 
 def generate_tattoo_stencil(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # PROMPT MÜHENDİSLİĞİ (GELİŞMİŞ)
-        # Amacımız: Temiz, beyaz arka planlı, deriye aktarılabilir şablonlar.
-        base_prompt = f"Design a professional tattoo stencil of: {user_prompt}. Body placement context: {placement}."
-        
-        style_details = {
-            "Fine Line": "Ultra-thin single needle lines, minimalist, delicate, high precision, no shading, distinct outlines.",
-            "Micro Realism": "Highly detailed micro realism, soft grey shading, photographic quality in black and white.",
-            "Dotwork/Mandala": "Stippling texture, pointillism, sacred geometry, precise dot patterns, black ink.",
-            "Traditional (Old School)": "Bold thick outlines, heavy black shading, classic tattoo iconography, strong contrast.",
-            "Sketch/Abstract": "Pencil sketch style, rough artistic lines, charcoal texture, unfinished artistic edges.",
-            "Blackwork/Tribal": "Solid black fill, heavy bold shapes, high contrast, negative space patterns."
-        }
-        
-        selected_style_prompt = style_details.get(style, "")
-        
-        # Final Prompt'u güçlendiriyoruz
-        final_prompt = (
-            f"{base_prompt} Style: {selected_style_prompt}. "
-            f"Requirements: Pure white background, high contrast black ink, clean isolation, "
-            f"no skin texture, no realistic body parts, 2D vector graphic style, professional tattoo flash sheet."
-        )
+        # GELİŞMİŞ PROMPT MÜHENDİSLİĞİ
+        base_prompt = f"Professional tattoo stencil design of: {user_prompt}. Placement: {placement}."
+        style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
+        final_prompt = f"{base_prompt} {style_prompt}"
 
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
@@ -200,114 +184,108 @@ def generate_tattoo_stencil(user_prompt, style, placement):
             image_bytes = response.generated_images[0].image.image_bytes
             img = Image.open(BytesIO(image_bytes))
             return img, None
-        return None, "Yapay zeka boş yanıt döndü."
+        return None, "AI returned empty response."
     except Exception as e:
         return None, str(e)
 
 # --- UYGULAMA AKIŞI ---
 
-# Session State Başlatma (Oturum Hafızası)
-if "gallery" not in st.session_state:
-    st.session_state["gallery"] = [] 
+# Session Başlat
+if "generated_img" not in st.session_state:
+    st.session_state["generated_img"] = None
+    st.session_state["last_prompt"] = ""
 
-# 1. GİRİŞ EKRANI
+# 1. LOGIN
 if "logged_in_user" not in st.session_state:
     st.markdown("<div style='margin-top: 50px;'></div>", unsafe_allow_html=True)
     st.markdown("<h1 class='main-title'>Fallink.</h1>", unsafe_allow_html=True)
-    st.markdown("<p class='sub-title'>AI Tattoo Design Studio</p>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container(border=True):
-            st.markdown("**Member Access**")
-            username_input = st.text_input("Access Code", placeholder="Enter your code", label_visibility="collapsed")
+            username_input = st.text_input("Access Code", placeholder="Enter code...")
             if st.button("Enter Studio", use_container_width=True):
                 credits = check_user_credits(username_input)
                 if credits == -1:
-                    st.error("Access code not found.")
+                    st.error("Invalid code.")
                 else:
                     st.session_state["logged_in_user"] = username_input
                     st.session_state["credits"] = credits
                     st.rerun()
     st.stop()
 
-# 2. STÜDYO EKRANI
+# 2. STÜDYO ARAYÜZÜ
 user = st.session_state["logged_in_user"]
 credits = check_user_credits(user)
 
-# Üst Bar
 c1, c2 = st.columns([3,1])
 with c1:
-    st.markdown(f"<h3 style='margin:0; padding-top:10px;'>Fallink Studio</h3>", unsafe_allow_html=True)
+    st.markdown(f"**Member:** {user}")
 with c2:
-    st.markdown(f"<div class='credit-badge'>💎 {credits} Credits</div>", unsafe_allow_html=True)
+    st.markdown(f"**Credits:** {credits} 💎")
 
 st.markdown("---")
 
 # Giriş Alanı
-c_left, c_right = st.columns([2, 1])
+c_left, c_right = st.columns([1.5, 1])
 
 with c_left:
-    st.markdown("##### 💡 Describe your idea")
-    user_prompt = st.text_area("Prompt", height=120, placeholder="E.g. A wolf head with geometric shapes, looking fierce...", label_visibility="collapsed")
-    
-    # Hızlı İlham Butonu
-    if st.button("🎲 Surprise Me (Random Idea)"):
-        ideas = ["A minimalist paper plane flying through clouds", "A realistic eye crying a galaxy", "A snake wrapped around a dagger, traditional style", "Geometric deer head with flowers"]
+    user_prompt = st.text_area("Describe your tattoo idea", height=150, placeholder="E.g. A geometric wolf head...")
+    if st.button("🎲 Random Idea"):
+        ideas = ["Minimalist paper plane", "Snake wrapped around dagger", "Realistic eye crying galaxy", "Geometric deer head"]
         user_prompt = random.choice(ideas)
-        st.info(f"Try this: {user_prompt}")
+        st.info(f"Try: {user_prompt}")
 
 with c_right:
-    st.markdown("##### 🎨 Style & Fit")
-    style = st.selectbox("Art Style", ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Traditional (Old School)", "Sketch/Abstract", "Blackwork/Tribal"))
-    placement = st.selectbox("Body Area", ("Inner Arm", "Back", "Chest", "Ankle", "Neck", "Thigh"))
+    style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"))
+    placement = st.selectbox("Placement", ("Arm", "Leg", "Chest", "Back", "Wrist"))
     
-    generate_btn = st.button("Generate Ink ✨", type="primary", use_container_width=True)
+    if st.button("Generate Ink ✨ (1 Credit)", type="primary", use_container_width=True):
+        if credits < 1:
+            st.error("No credits left!")
+        elif not user_prompt:
+            st.warning("Please describe an idea.")
+        else:
+            with st.spinner("Designing..."):
+                new_credits = deduct_credit(user, credits)
+                img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                if img:
+                    st.session_state["generated_img"] = img
+                    st.session_state["last_prompt"] = user_prompt
+                    st.session_state["credits"] = new_credits
+                    st.rerun()
+                else:
+                    st.error(err)
 
-# Üretim İşlemi
-if generate_btn:
-    if credits < 1:
-        st.error("Out of ink! Please top up your credits.")
-    elif not user_prompt:
-        st.warning("Please describe what you want first.")
-    else:
-        with st.spinner("Mixing ink & designing..."):
-            new_credits = deduct_credit(user, credits)
-            img, err = generate_tattoo_stencil(user_prompt, style, placement)
-            
-            if img:
-                # Galeriye ekle
-                st.session_state["gallery"].insert(0, {"img": img, "prompt": user_prompt, "style": style})
-                st.session_state["credits"] = new_credits
-                st.rerun() # Sayfayı yenile ki galeri güncellensin
-            else:
-                st.error(f"Error: {err}")
-
-# 3. GALERİ (SONUÇLAR)
-if len(st.session_state["gallery"]) > 0:
-    st.markdown("### Recent Designs")
-    
-    # En son tasarımı büyük göster
-    latest = st.session_state["gallery"][0]
-    
-    st.markdown(f"""
-    <div class="design-card">
-        <p style="color:#888; font-size:0.9rem;">{latest['prompt']} • {latest['style']}</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.image(latest['img'], use_column_width=True)
-    st.markdown(get_image_download_link(latest['img'], "fallink_design.png", "Download Stencil"), unsafe_allow_html=True)
-    
+# 3. SONUÇ VE EMAIL ALANI
+if st.session_state["generated_img"]:
     st.markdown("---")
+    st.markdown("### Your Design")
     
-    # Eski tasarımları küçük göster (Expander içinde)
-    with st.expander("View Previous Designs in Session"):
-        for item in st.session_state["gallery"][1:]:
-            col_a, col_b = st.columns([1,3])
-            with col_a:
-                st.image(item['img'], width=100)
-            with col_b:
-                st.write(f"**{item['style']}**")
-                st.caption(item['prompt'])
-                st.markdown(get_image_download_link(item['img'], "design.png", "Download"), unsafe_allow_html=True)
+    img = st.session_state["generated_img"]
+    st.image(img, caption="Fallink AI Design", width=400)
+    
+    # İndirme ve Email Paneli
+    col_d1, col_d2 = st.columns(2)
+    
+    with col_d1:
+        st.markdown(get_image_download_link(img, "design.png", "Download Image"), unsafe_allow_html=True)
+    
+    with col_d2:
+        with st.expander("📧 Email this design"):
+            customer_email = st.text_input("Customer Email", placeholder="client@example.com")
+            if st.button("Send Email"):
+                if customer_email:
+                    with st.spinner("Sending email..."):
+                        # Buffer oluştur
+                        buf = BytesIO()
+                        img.save(buf, format="PNG")
+                        buf.seek(0)
+                        
+                        success, msg = send_email_with_design(customer_email, buf, st.session_state["last_prompt"])
+                        if success:
+                            st.success("Email sent successfully! 📨")
+                        else:
+                            st.error(f"Error: {msg}")
+                else:
+                    st.warning("Enter an email address.")
