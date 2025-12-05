@@ -19,7 +19,7 @@ try:
     EMAIL_USER = st.secrets["EMAIL_USER"]
     EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
 except:
-    st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını (Google, Supabase ve Email) kontrol et.")
+    st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını kontrol et.")
     st.stop()
 
 # --- SAYFA AYARLARI ---
@@ -45,14 +45,13 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
-    /* Genel Ayarlar */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         background-color: #FAFAFA;
         color: #111;
     }
 
-    /* INPUT ALANLARI DÜZELTMESİ (BEYAZ ARKA PLAN) */
+    /* INPUT ALANLARI - Beyaz Arka Plan */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important; 
         color: #000000 !important;
@@ -60,13 +59,8 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* Placeholder Rengi */
-    ::placeholder {
-        color: #888 !important;
-        opacity: 1;
-    }
+    ::placeholder { color: #888 !important; opacity: 1; }
 
-    /* Başlıklar */
     .main-title {
         font-size: 2.5rem;
         font-weight: 800;
@@ -75,7 +69,6 @@ st.markdown("""
         color: #111;
     }
     
-    /* Butonlar */
     .stButton > button {
         background-color: #111 !important;
         color: white !important;
@@ -89,35 +82,28 @@ st.markdown("""
         background-color: #333 !important;
         transform: translateY(-2px);
     }
-    
-    /* Kart Tasarımı */
-    .design-card {
-        background: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        text-align: center;
-        margin-top: 20px;
-        border: 1px solid #eaeaea;
-    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- FONKSİYONLAR ---
 
 def send_email_with_design(to_email, img_buffer, prompt):
-    """Müşteriye tasarımı e-posta ile gönderir (UTF-8 Destekli)."""
+    """E-postayı UTF-8 formatında güvenli gönderir."""
+    
+    # 1. Metni Temizle (Görünmez karakterleri sil)
+    clean_prompt = prompt.replace('\xa0', ' ').strip()
+    
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
     msg['To'] = to_email
-    msg['Subject'] = "Your Fallink Tattoo Design is Ready! ✒️"
+    msg['Subject'] = "Your Fallink Tattoo Design is Ready" # Emoji kaldırıldı, garanti olsun
 
     body = f"""
     <html>
       <body>
         <h2>Your Design is Here!</h2>
         <p>Here is the AI-generated tattoo stencil you created with Fallink.</p>
-        <p><strong>Idea:</strong> {prompt}</p>
+        <p><strong>Idea:</strong> {clean_prompt}</p>
         <br>
         <p>See you at the studio!</p>
         <p><em>Fallink Team</em></p>
@@ -125,7 +111,7 @@ def send_email_with_design(to_email, img_buffer, prompt):
     </html>
     """
     
-    # HATA ÇÖZÜMÜ BURADA: 'utf-8' eklendi. Artık Türkçe karakter hatası vermez.
+    # 2. UTF-8 Zorunlu Kıl
     msg.attach(MIMEText(body, 'html', 'utf-8'))
 
     # Resmi Ekle
@@ -170,12 +156,13 @@ def generate_tattoo_stencil(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # GELİŞMİŞ PROMPT MÜHENDİSLİĞİ
-        base_prompt = f"Professional tattoo stencil design of: {user_prompt}. Placement: {placement}."
+        # Prompt Temizliği
+        clean_user_prompt = user_prompt.replace('\xa0', ' ').strip()
+        
+        base_prompt = f"Professional tattoo stencil design of: {clean_user_prompt}. Placement: {placement}."
         style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
         final_prompt = f"{base_prompt} {style_prompt}"
 
-        # Imagen 4.0 Modeli
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
             prompt=final_prompt,
@@ -228,7 +215,6 @@ with c2:
 
 st.markdown("---")
 
-# Giriş Alanı
 c_left, c_right = st.columns([1.5, 1])
 
 with c_left:
@@ -267,7 +253,6 @@ if st.session_state["generated_img"]:
     img = st.session_state["generated_img"]
     st.image(img, caption="Fallink AI Design", width=400)
     
-    # İndirme ve Email Paneli
     col_d1, col_d2 = st.columns(2)
     
     with col_d1:
@@ -279,7 +264,6 @@ if st.session_state["generated_img"]:
             if st.button("Send Email"):
                 if customer_email:
                     with st.spinner("Sending email..."):
-                        # Buffer oluştur
                         buf = BytesIO()
                         img.save(buf, format="PNG")
                         buf.seek(0)
@@ -291,3 +275,6 @@ if st.session_state["generated_img"]:
                             st.error(f"Error: {msg}")
                 else:
                     st.warning("Enter an email address.")
+
+# --- SÜRÜM KONTROLÜ ---
+st.markdown("<br><hr><center><small style='color:grey'>Fallink App v2.3 (Updated)</small></center>", unsafe_allow_html=True)
