@@ -51,6 +51,7 @@ st.markdown("""
         color: #111;
     }
     
+    /* Input alanları */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important; 
         color: #000000 !important;
@@ -66,6 +67,7 @@ st.markdown("""
         color: #111;
     }
     
+    /* Standart Butonlar */
     .stButton > button {
         background-color: #111 !important;
         color: white !important;
@@ -78,6 +80,15 @@ st.markdown("""
     .stButton > button:hover {
         background-color: #333 !important;
         transform: translateY(-2px);
+    }
+
+    /* Refine (Düzenleme) Kutusu Stili */
+    .refine-box {
+        background-color: #f0f2f6;
+        padding: 20px;
+        border-radius: 15px;
+        border: 1px solid #e0e0e0;
+        margin-top: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -150,7 +161,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
         style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
         final_prompt = f"{base_prompt} {style_prompt}"
 
-        # TEK RESİM (EKONOMİK MOD)
+        # Tek Resim Modu
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
             prompt=final_prompt,
@@ -167,10 +178,11 @@ def generate_tattoo_stencil(user_prompt, style, placement):
 
 # --- UYGULAMA AKIŞI ---
 
-# Session durumu: Son üretilen resmi hafızada tut
 if "generated_img" not in st.session_state:
     st.session_state["generated_img"] = None
     st.session_state["last_prompt"] = ""
+    st.session_state["last_style"] = "Fine Line" # Varsayılan
+    st.session_state["last_placement"] = "Arm"
 
 # 1. LOGIN
 if "logged_in_user" not in st.session_state:
@@ -203,57 +215,51 @@ with c2:
 
 st.markdown("---")
 
-c_left, c_right = st.columns([1.5, 1])
+# Eğer henüz görsel üretilmediyse ANA GİRİŞ ALANINI göster
+if st.session_state["generated_img"] is None:
+    c_left, c_right = st.columns([1.5, 1])
 
-with c_left:
-    # Not: Burada session_state kullanmadık ki yazı alanı hep boş kalsın istemiyoruz.
-    # Kullanıcı "Generate" dedikten sonra yazı orada kalsın ki DEĞİŞTİREBİLSİN.
-    user_prompt = st.text_area("Describe your tattoo idea", height=150, value=st.session_state["last_prompt"], placeholder="E.g. A geometric wolf head...")
-    
-    if st.button("🎲 Random Idea"):
-        ideas = ["Minimalist paper plane", "Snake wrapped around dagger", "Realistic eye crying galaxy", "Geometric deer head"]
-        user_prompt = random.choice(ideas)
-        st.session_state["last_prompt"] = user_prompt # Yazıyı kutuya koymak için
-        st.rerun()
+    with c_left:
+        user_prompt = st.text_area("Describe your tattoo idea", height=150, placeholder="E.g. A geometric wolf head...")
+        if st.button("🎲 Random Idea"):
+            ideas = ["Minimalist paper plane", "Snake wrapped around dagger", "Realistic eye crying galaxy", "Geometric deer head"]
+            user_prompt = random.choice(ideas)
+            st.info(f"Try: {user_prompt}")
 
-with c_right:
-    style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"))
-    placement = st.selectbox("Placement", ("Arm", "Leg", "Chest", "Back", "Wrist"))
-    
-    # Buton Metni: "1 Kredi Harca"
-    if st.button("Generate Ink ✨ (1 Credit)", type="primary", use_container_width=True):
-        if credits < 1:
-            st.error("No credits left!")
-        elif not user_prompt:
-            st.warning("Please describe an idea.")
-        else:
-            with st.spinner("Designing..."):
-                new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_stencil(user_prompt, style, placement)
-                if img:
-                    st.session_state["generated_img"] = img
-                    st.session_state["last_prompt"] = user_prompt
-                    st.session_state["credits"] = new_credits
-                    st.rerun()
-                else:
-                    st.error(err)
+    with c_right:
+        style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"))
+        placement = st.selectbox("Placement", ("Arm", "Leg", "Chest", "Back", "Wrist"))
+        
+        if st.button("Generate Ink ✨ (1 Credit)", type="primary", use_container_width=True):
+            if credits < 1:
+                st.error("No credits left!")
+            elif not user_prompt:
+                st.warning("Please describe an idea.")
+            else:
+                with st.spinner("Designing..."):
+                    new_credits = deduct_credit(user, credits)
+                    img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                    if img:
+                        st.session_state["generated_img"] = img
+                        st.session_state["last_prompt"] = user_prompt
+                        st.session_state["last_style"] = style
+                        st.session_state["last_placement"] = placement
+                        st.session_state["credits"] = new_credits
+                        st.rerun()
+                    else:
+                        st.error(err)
 
-# 3. SONUÇ VE EMAIL ALANI
-if st.session_state["generated_img"]:
-    st.markdown("---")
+# 3. SONUÇ EKRANI (Resim Varsa Burası Çalışır)
+else:
     st.markdown("### Your Design")
     
     img = st.session_state["generated_img"]
     st.image(img, caption="Fallink AI Design", width=400)
     
-    # Kullanıcıya ipucu verelim
-    st.info("💡 Don't like it? Change the text above and click Generate again (Costs 1 credit).")
-    
+    # İndirme ve Email
     col_d1, col_d2 = st.columns(2)
-    
     with col_d1:
         st.markdown(get_image_download_link(img, "design.png", "Download Image"), unsafe_allow_html=True)
-    
     with col_d2:
         with st.expander("📧 Email this design"):
             customer_email = st.text_input("Customer Email", placeholder="client@example.com")
@@ -263,11 +269,44 @@ if st.session_state["generated_img"]:
                         buf = BytesIO()
                         img.save(buf, format="PNG")
                         buf.seek(0)
-                        
                         success, msg = send_email_with_design(customer_email, buf, st.session_state["last_prompt"])
                         if success:
-                            st.success(f"Email sent to {customer_email}! 📨")
+                            st.success(f"Sent to {customer_email}!")
                         else:
                             st.error(f"Error: {msg}")
-                else:
-                    st.warning("Enter an email address.")
+
+    st.markdown("---")
+    
+    # 4. YENİDEN DÜZENLEME ALANI (UPDATE & RETRY)
+    st.markdown("#### ✏️ Want changes?")
+    st.caption("Not exactly what you wanted? Describe changes below to generate a new version.")
+    
+    with st.container(border=True):
+        # Eski promptu varsayılan olarak getiriyoruz ki üzerinde oynayabilsin
+        new_prompt_input = st.text_area("Refine your idea:", value=st.session_state["last_prompt"], height=100)
+        
+        col_u1, col_u2 = st.columns(2)
+        with col_u1:
+             # Stili de değiştirmek isteyebilir
+             new_style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"), index=["Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"].index(st.session_state["last_style"]))
+        with col_u2:
+             if st.button("Update Design (1 Credit)", type="secondary", use_container_width=True):
+                 if credits < 1:
+                     st.error("Not enough credits!")
+                 else:
+                     with st.spinner("Updating design..."):
+                        new_credits = deduct_credit(user, credits)
+                        img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
+                        if img:
+                            st.session_state["generated_img"] = img
+                            st.session_state["last_prompt"] = new_prompt_input
+                            st.session_state["last_style"] = new_style
+                            st.session_state["credits"] = new_credits
+                            st.rerun()
+                        else:
+                            st.error(err)
+
+    # En başa dönmek için buton
+    if st.button("Start Fresh (Clear All)"):
+        st.session_state["generated_img"] = None
+        st.rerun()
