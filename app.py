@@ -105,9 +105,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- FONKSİYONLAR ---
-
 def send_email_with_design(to_email, img_buffer, prompt):
-    """Müşteriye tasarımı e-posta ile gönderir."""
+    """Müşteriye tasarımı e-posta ile gönderir (UTF-8 Destekli)."""
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
     msg['To'] = to_email
@@ -125,7 +124,25 @@ def send_email_with_design(to_email, img_buffer, prompt):
       </body>
     </html>
     """
-    msg.attach(MIMEText(body, 'html'))
+    
+    # --- DÜZELTME BURADA YAPILDI: 'utf-8' EKLENDİ ---
+    msg.attach(MIMEText(body, 'html', 'utf-8')) 
+    # ------------------------------------------------
+
+    # Resmi Ekle
+    image_data = img_buffer.getvalue()
+    image = MIMEImage(image_data, name="fallink_design.png")
+    msg.attach(image)
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True, "Email sent successfully!"
+    except Exception as e:
+        return False, str(e)
 
     # Resmi Ekle
     image_data = img_buffer.getvalue()
