@@ -125,7 +125,7 @@ def send_email_with_design(to_email, img_buffer, prompt):
     </html>
     """
     
-    # HATA ÇÖZÜMÜ BURADA: 'utf-8' eklendi
+    # HATA ÇÖZÜMÜ BURADA: 'utf-8' eklendi. Artık Türkçe karakter hatası vermez.
     msg.attach(MIMEText(body, 'html', 'utf-8'))
 
     # Resmi Ekle
