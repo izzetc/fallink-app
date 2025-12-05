@@ -9,6 +9,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from email.header import Header
 from supabase import create_client, Client
 
 # --- GİZLİ BİLGİLERİ (SECRETS) ÇEKME ---
@@ -50,8 +51,7 @@ st.markdown("""
         background-color: #FAFAFA;
         color: #111;
     }
-
-    /* INPUT ALANLARI - Beyaz Arka Plan */
+    
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important; 
         color: #000000 !important;
@@ -87,23 +87,36 @@ st.markdown("""
 
 # --- FONKSİYONLAR ---
 
+def clean_text(text):
+    """Görünmez karakterleri ve Türkçe sorunlarını temizler."""
+    if text:
+        # \xa0 (non-breaking space) karakterini normal boşluğa çevir
+        text = text.replace('\xa0', ' ')
+        # Başındaki ve sonundaki boşlukları sil
+        text = text.strip()
+        return text
+    return ""
+
 def send_email_with_design(to_email, img_buffer, prompt):
     """E-postayı UTF-8 formatında güvenli gönderir."""
     
-    # 1. Metni Temizle (Görünmez karakterleri sil)
-    clean_prompt = prompt.replace('\xa0', ' ').strip()
+    # Girdileri temizle (ÖNEMLİ ADIM)
+    safe_email = clean_text(to_email)
+    safe_prompt = clean_text(prompt)
     
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
-    msg['To'] = to_email
-    msg['Subject'] = "Your Fallink Tattoo Design is Ready" # Emoji kaldırıldı, garanti olsun
+    msg['To'] = safe_email
+    
+    # Konu başlığını UTF-8 olarak şifrele (Header sınıfı ile)
+    msg['Subject'] = Header("Your Fallink Tattoo Design is Ready", 'utf-8')
 
     body = f"""
     <html>
       <body>
         <h2>Your Design is Here!</h2>
         <p>Here is the AI-generated tattoo stencil you created with Fallink.</p>
-        <p><strong>Idea:</strong> {clean_prompt}</p>
+        <p><strong>Idea:</strong> {safe_prompt}</p>
         <br>
         <p>See you at the studio!</p>
         <p><em>Fallink Team</em></p>
@@ -111,7 +124,7 @@ def send_email_with_design(to_email, img_buffer, prompt):
     </html>
     """
     
-    # 2. UTF-8 Zorunlu Kıl
+    # Gövdeyi UTF-8 yap
     msg.attach(MIMEText(body, 'html', 'utf-8'))
 
     # Resmi Ekle
@@ -131,6 +144,8 @@ def send_email_with_design(to_email, img_buffer, prompt):
 
 def check_user_credits(username):
     try:
+        # Username temizliği
+        username = clean_text(username)
         response = supabase.table("users").select("*").eq("username", username).execute()
         if response.data:
             return response.data[0]["credits"]
@@ -156,8 +171,8 @@ def generate_tattoo_stencil(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # Prompt Temizliği
-        clean_user_prompt = user_prompt.replace('\xa0', ' ').strip()
+        # Prompt temizliği
+        clean_user_prompt = clean_text(user_prompt)
         
         base_prompt = f"Professional tattoo stencil design of: {clean_user_prompt}. Placement: {placement}."
         style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
@@ -179,7 +194,6 @@ def generate_tattoo_stencil(user_prompt, style, placement):
 
 # --- UYGULAMA AKIŞI ---
 
-# Session Başlat
 if "generated_img" not in st.session_state:
     st.session_state["generated_img"] = None
     st.session_state["last_prompt"] = ""
@@ -194,11 +208,13 @@ if "logged_in_user" not in st.session_state:
         with st.container(border=True):
             username_input = st.text_input("Access Code", placeholder="Enter code...")
             if st.button("Enter Studio", use_container_width=True):
-                credits = check_user_credits(username_input)
+                # Girişte de temizlik yap
+                safe_username = clean_text(username_input)
+                credits = check_user_credits(safe_username)
                 if credits == -1:
                     st.error("Invalid code.")
                 else:
-                    st.session_state["logged_in_user"] = username_input
+                    st.session_state["logged_in_user"] = safe_username
                     st.session_state["credits"] = credits
                     st.rerun()
     st.stop()
@@ -236,10 +252,11 @@ with c_right:
         else:
             with st.spinner("Designing..."):
                 new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                safe_prompt = clean_text(user_prompt)
+                img, err = generate_tattoo_stencil(safe_prompt, style, placement)
                 if img:
                     st.session_state["generated_img"] = img
-                    st.session_state["last_prompt"] = user_prompt
+                    st.session_state["last_prompt"] = safe_prompt
                     st.session_state["credits"] = new_credits
                     st.rerun()
                 else:
@@ -263,18 +280,21 @@ if st.session_state["generated_img"]:
             customer_email = st.text_input("Customer Email", placeholder="client@example.com")
             if st.button("Send Email"):
                 if customer_email:
+                    # Girdiyi temizle (Görünmez boşlukları siler)
+                    safe_email = clean_text(customer_email)
+                    
                     with st.spinner("Sending email..."):
                         buf = BytesIO()
                         img.save(buf, format="PNG")
                         buf.seek(0)
                         
-                        success, msg = send_email_with_design(customer_email, buf, st.session_state["last_prompt"])
+                        success, msg = send_email_with_design(safe_email, buf, st.session_state["last_prompt"])
                         if success:
-                            st.success("Email sent successfully! 📨")
+                            st.success(f"Email sent to {safe_email}! 📨")
                         else:
                             st.error(f"Error: {msg}")
                 else:
                     st.warning("Enter an email address.")
 
 # --- SÜRÜM KONTROLÜ ---
-st.markdown("<br><hr><center><small style='color:grey'>Fallink App v2.3 (Updated)</small></center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center><small style='color:grey'>Fallink App v2.4 (Sanitized)</small></center>", unsafe_allow_html=True)
