@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from supabase import create_client, Client
 
-# --- GİZLİ BİLGİLERİ ÇEKME ---
+# --- GİZLİ BİLGİLERİ (SECRETS) ÇEKME ---
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
@@ -19,7 +19,7 @@ try:
     EMAIL_USER = st.secrets["EMAIL_USER"]
     EMAIL_PASSWORD = st.secrets["EMAIL_PASSWORD"]
 except:
-    st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını (Email dahil) kontrol et.")
+    st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını (Google, Supabase ve Email) kontrol et.")
     st.stop()
 
 # --- SAYFA AYARLARI ---
@@ -40,7 +40,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM (DÜZELTİLMİŞ) ---
+# --- CSS TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -52,8 +52,7 @@ st.markdown("""
         color: #111;
     }
 
-    /* INPUT ALANLARI DÜZELTMESİ (ÖNEMLİ) */
-    /* Yazı alanlarının arka planını beyaz, yazısını siyah yapıyoruz */
+    /* INPUT ALANLARI DÜZELTMESİ (BEYAZ ARKA PLAN) */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #FFFFFF !important; 
         color: #000000 !important;
@@ -61,7 +60,7 @@ st.markdown("""
         border-radius: 8px !important;
     }
     
-    /* Placeholder (ipucu) yazısı rengi */
+    /* Placeholder Rengi */
     ::placeholder {
         color: #888 !important;
         opacity: 1;
@@ -105,6 +104,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- FONKSİYONLAR ---
+
 def send_email_with_design(to_email, img_buffer, prompt):
     """Müşteriye tasarımı e-posta ile gönderir (UTF-8 Destekli)."""
     msg = MIMEMultipart()
@@ -125,9 +125,8 @@ def send_email_with_design(to_email, img_buffer, prompt):
     </html>
     """
     
-    # --- DÜZELTME BURADA YAPILDI: 'utf-8' EKLENDİ ---
-    msg.attach(MIMEText(body, 'html', 'utf-8')) 
-    # ------------------------------------------------
+    # HATA ÇÖZÜMÜ BURADA: 'utf-8' eklendi
+    msg.attach(MIMEText(body, 'html', 'utf-8'))
 
     # Resmi Ekle
     image_data = img_buffer.getvalue()
@@ -176,6 +175,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
         style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
         final_prompt = f"{base_prompt} {style_prompt}"
 
+        # Imagen 4.0 Modeli
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
             prompt=final_prompt,
