@@ -3,16 +3,138 @@ from google import genai
 from PIL import Image
 from io import BytesIO
 import base64
+import time
 
-# Page Configuration
+# --- APPLE STYLE CONFIGURATION ---
 st.set_page_config(
-    page_title="JustArt AI Tattoo Generator",
-    page_icon="🎨",
-    layout="centered"
+    page_title="JustArt Studio",
+    page_icon="✨",
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
 # --- PASTE YOUR API KEY HERE ---
 API_KEY = "AIzaSyD2BN8tmMSYnOIHBYJrOJnBNXDF2OnjPVI"
+
+# --- PASSWORD SYSTEM ---
+# Basit ve etkili şifre koruması
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    if "password_correct" not in st.session_state:
+        st.session_state["password_correct"] = False
+
+    if st.session_state["password_correct"]:
+        return True
+
+    st.markdown(
+        """
+        <style>
+        .stTextInput > div > div > input {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 5px;
+            border-radius: 12px;
+            padding: 15px;
+        }
+        </style>
+        <h1 style='text-align: center; font-weight: 300;'>Welcome to Studio.</h1>
+        <p style='text-align: center; color: grey;'>Please enter your access code.</p>
+        """, unsafe_allow_html=True)
+
+    password = st.text_input("", type="password", key="password_input")
+    
+    # --- ŞİFREYİ BURADAN DEĞİŞTİREBİLİRSİN (Şu an: xqr) ---
+    if password == "xqr": 
+        st.session_state["password_correct"] = True
+        st.rerun()  # Şifre doğruysa sayfayı yenile ve içeri al
+    elif password:
+        st.error("Incorrect code. Please try again.")
+    
+    return False
+
+if not check_password():
+    st.stop() # Şifre yanlışsa burada dur, aşağıyı gösterme
+
+# --- CSS STYLING (Apple Aesthetic) ---
+st.markdown("""
+<style>
+    /* Font ve Genel Yapı */
+    @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+        background-color: #ffffff; /* Saf beyaz arka plan */
+        color: #1d1d1f; /* Apple koyu gri yazı rengi */
+    }
+
+    /* Başlıklar */
+    h1 {
+        font-weight: 600;
+        font-size: 2.5rem;
+        letter-spacing: -0.02em;
+    }
+    h2, h3 {
+        font-weight: 500;
+    }
+
+    /* Butonlar (Apple Mavisi) */
+    .stButton > button {
+        background-color: #0071e3 !important;
+        color: white !important;
+        border-radius: 980px !important; /* Tam yuvarlak kenarlar */
+        padding: 12px 24px !important;
+        font-weight: 500 !important;
+        font-size: 16px !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        background-color: #0077ED !important;
+        transform: scale(1.02);
+    }
+    /* İkincil Buton (İndir) */
+    .download-btn {
+        background-color: #f5f5f7;
+        color: #1d1d1f;
+        border-radius: 12px;
+        padding: 10px 20px;
+        text-decoration: none;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        transition: background-color 0.3s ease;
+    }
+    .download-btn:hover {
+        background-color: #e8e8ed;
+    }
+
+    /* Giriş Alanları ve Seçim Kutuları */
+    .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+        border-radius: 12px !important;
+        border: 1px solid #d2d2d7 !important;
+        background-color: #ffffff !important;
+        padding: 5px !important;
+    }
+    .stTextArea textarea:focus, .stSelectbox div[data-baseweb="select"]:focus-within {
+        border-color: #0071e3 !important;
+        box-shadow: 0 0 0 4px rgba(0,113,227,0.1) !important;
+    }
+
+    /* Radio Butonları (Stil Seçimi) */
+    .stRadio > div {
+        background-color: #f5f5f7;
+        padding: 15px;
+        border-radius: 16px;
+    }
+
+    /* Görseller */
+    img {
+        border-radius: 18px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- HELPER FUNCTIONS ---
 
@@ -20,33 +142,33 @@ def get_image_download_link(img, filename, text):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    href = f'<a href="data:file/png;base64,{img_str}" download="{filename}" style="text-decoration: none;"><button style="background-color: #333333; border: 1px solid #555; color: white; padding: 10px 24px; text-align: center; text-decoration: none; display: inline-block; font-size: 14px; margin: 4px 2px; cursor: pointer; border-radius: 4px;">📥 {text}</button></a>'
+    href = f'<a href="data:file/png;base64,{img_str}" download="{filename}" class="download-btn">Is {text}</a>'
     return href
 
-def generate_tattoo_stencil(user_prompt, style):
+def generate_tattoo_stencil(user_prompt, style, placement):
     client = genai.Client(api_key=API_KEY)
     
-    # Prompt Engineering for specific styles
-    base_prompt = f"Tattoo design concept: {user_prompt}."
+    base_prompt = f"Tattoo design concept: {user_prompt}. Placement body area: {placement}."
     
-    if style == "Fine Line":
-        style_prompt = "Style: Minimalist fine line tattoo, clean single needle work, delicate details, black ink only, no shading, white background."
-    elif style == "Dotwork":
-        style_prompt = "Style: Dotwork shading tattoo, stippling texture, geometric patterns, blackwork, high contrast, white background."
-    elif style == "Engraving":
-        style_prompt = "Style: Vintage engraving illustration, cross-hatching shading, linocut print look, black ink, detailed linework."
-    elif style == "Sketch":
-        style_prompt = "Style: Pencil sketch tattoo design, rough lines, hand-drawn look, black and grey, artistic, white paper background."
-    elif style == "Realism (Black & Grey)":
-        style_prompt = "Style: Hyper-realistic black and grey tattoo, soft shading, depth, 8k resolution, professional tattoo art."
-    else: # Default Blackwork
-        style_prompt = "Style: Bold blackwork tattoo, solid black areas, clean outlines, high contrast, traditional feel, white background."
+    # --- YENİ VE GENİŞLETİLMİŞ STİL MENÜSÜ ---
+    styles = {
+        "Fine Line Minimalist": "Style: Ultra-thin fine line tattoo, single needle, minimalist, clean, delicate, black ink, no shading, negative space.",
+        "Micro Realism (Small & Detailed)": "Style: Micro realism tattoo, incredible detail in small scale, fine black and grey shading, photographic quality.",
+        "Dotwork & Geometry": "Style: Dotwork shading, sacred geometry patterns, mandalas, stippling, precise dots, blackwork.",
+        "Engraving / Woodcut": "Style: Vintage engraving illustration, cross-hatching, linocut print texture, old book illustration feel.",
+        "Sketch / Hand-Drawn": "Style: Pencil sketch, rough guidelines, artistic, unfinished look, charcoal texture on paper.",
+        "Blackwork / Tribal": "Style: Bold blackwork, solid blackfill areas, heavy lines, high contrast, tribal or ornamental patterns.",
+        "Cyber Sigilism / Neo-Tribal": "Style: Cyber sigilism, futuristic chrome tribal, sharp aggressive lines, Y2K aesthetic, bio-mechanical.",
+        "Japanese (Irezumi - Black & Grey)": "Style: Traditional Japanese tattoo, irezumi, waves, clouds, dragon scales, bold outlines, heavy black shading.",
+        "Trash Polka (Black & Red)": "Style: Trash Polka, chaotic composition, realism mixed with abstract brush strokes, typography, black and red ink only."
+    }
+    
+    style_prompt = styles.get(style, styles["Blackwork / Tribal"]) # Varsayılan: Blackwork
 
-    # Final Instruction for AI (Force Stencil/Clean Look)
-    final_prompt = f"{base_prompt} {style_prompt} Output must be a clean, black and white tattoo design on a plain white background. High contrast, professional tattoo flash."
+    # Final Prompt Engineering
+    final_prompt = f"{base_prompt} {style_prompt} Output must be a clean, high-contrast tattoo design on a plain white background. Professional tattoo flash art."
 
     try:
-        # Generate with Imagen 4.0
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
             prompt=final_prompt,
@@ -58,68 +180,72 @@ def generate_tattoo_stencil(user_prompt, style):
             img = Image.open(BytesIO(image_bytes))
             return img, None
         else:
-            return None, "The AI returned an empty response. Please try again."
+            return None, "AI returned an empty response."
             
     except Exception as e:
         return None, str(e)
 
-# --- UI DESIGN (FRONTEND) ---
+# --- MAIN APP INTERFACE ---
 
-# Header Section
-col1, col2 = st.columns([1, 5])
+st.markdown("<h1 style='text-align: center; margin-bottom: 10px;'>Design Your Ink.</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: grey; margin-top: -15px; margin-bottom: 40px;'>Powered by JustArt AI</p>", unsafe_allow_html=True)
+
+with st.container():
+    st.subheader("1. The Idea")
+    user_input = st.text_area(
+        "Describe your vision", 
+        height=120,
+        help="Be descriptive. Example: 'A astronaut sitting on a crescent moon, holding a balloon'",
+        placeholder="e.g., A stoic lion portrait with a geometric mane..."
+    )
+
+col1, col2 = st.columns(2)
 with col1:
-    # You can change this icon to your own logo URL
-    st.image("https://cdn-icons-png.flaticon.com/512/2913/2913482.png", width=60) 
+    st.subheader("2. The Style")
+    selected_style = st.selectbox(
+        "Choose an aesthetic",
+        ("Fine Line Minimalist", "Micro Realism (Small & Detailed)", "Dotwork & Geometry", "Engraving / Woodcut", "Sketch / Hand-Drawn", "Blackwork / Tribal", "Cyber Sigilism / Neo-Tribal", "Japanese (Irezumi - Black & Grey)", "Trash Polka (Black & Red)")
+    )
 with col2:
-    st.title("AI Tattoo Stencil Generator")
-    st.caption("Create unique tattoo designs in seconds. Powered by JustArtTattoo.")
+    st.subheader("3. Placement")
+    placement = st.selectbox(
+        "Where will it go?",
+        ("Arm / Forearm", "Shoulder", "Back", "Chest / Sternum", "Leg / Calf", "Ankle / Wrist", "Neck (Small)")
+    )
 
 st.markdown("---")
 
-# Input Section
-st.subheader("1. Describe Your Idea")
-user_input = st.text_area(
-    "What should the tattoo look like?", 
-    height=100, 
-    placeholder="Example: A geometric wolf howling at the moon, surrounded by roses, fine line style..."
-)
-
-st.subheader("2. Choose a Style")
-selected_style = st.radio(
-    "Select the artistic technique:",
-    ("Fine Line", "Dotwork", "Engraving", "Realism (Black & Grey)", "Sketch", "Blackwork"),
-    horizontal=True
-)
-
-st.markdown("---")
-
-# Generate Button
-if st.button("✨ Generate Design ✨", type="primary", use_container_width=True):
+# Generate Button with Animation Effect
+if st.button("Create Design", type="primary", use_container_width=True):
     if not user_input:
-        st.warning("Please describe your tattoo idea first.")
+        st.toast("Please describe your idea first.", icon="⚠️")
     else:
-        with st.spinner('AI is crafting your design... (This usually takes 10-15 seconds)'):
-            
-            generated_image, error_message = generate_tattoo_stencil(user_input, selected_style)
-            
-            if generated_image:
-                st.success("Design generated successfully!")
-                
-                # Display Result
-                st.image(generated_image, caption=f"Result: {selected_style} Style", use_column_width=True)
-                
-                # Download Button
-                st.markdown(get_image_download_link(generated_image, "tattoo_design.png", "Download Design (PNG)"), unsafe_allow_html=True)
-                st.info("💡 Tip: You can show this design to your tattoo artist for the final stencil.")
-                
-            else:
-                st.error(f"An error occurred: {error_message}")
+        progress_text = "Crafting your design... This feels like magic."
+        my_bar = st.progress(0, text=progress_text)
 
-# Footer
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: grey; font-size: 12px;'>"
-    "Generated by JustArtTattoo AI Engine | © 2025 All Rights Reserved"
-    "</div>", 
-    unsafe_allow_html=True
-)
+        for percent_complete in range(100):
+            time.sleep(0.05) # Fake loading animation for better UX
+            my_bar.progress(percent_complete + 1, text=progress_text)
+            
+        # Real Generation
+        generated_image, error_message = generate_tattoo_stencil(user_input, selected_style, placement)
+        my_bar.empty() # Remove progress bar
+
+        if generated_image:
+            st.balloons() # Success animation
+            st.success("Your design is ready.")
+            
+            # Result Display
+            st.image(generated_image, caption=f"{selected_style} on {placement}", use_column_width=True)
+            
+            # Download Section
+            st.markdown("<div style='text-align: center; margin-top: 20px;'>", unsafe_allow_html=True)
+            st.markdown(get_image_download_link(generated_image, "justart_design.png", "Download High-Res Image"), unsafe_allow_html=True)
+            st.caption("Show this to your tattoo artist.")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        else:
+            st.error(f"Something went wrong: {error_message}")
+
+# Minimal Footer
+st.markdown("<div style='text-align: center; color: #86868b; font-size: 12px; margin-top: 50px; padding-bottom: 20px;'>JustArt Studio © 2025</div>", unsafe_allow_html=True)
