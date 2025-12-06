@@ -1,3 +1,4 @@
+# ZORUNLU GUNCELLEME - TARIH VE SAAT EKLE (Örn: # GUNCELLEME 06.12.2023 15:30)
 import streamlit as st
 from google import genai
 from PIL import Image
