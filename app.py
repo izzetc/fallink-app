@@ -63,6 +63,14 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
+    /* Dosya Yükleyici Stili */
+    div[data-testid="stFileUploader"] {
+        padding: 10px;
+        border: 1px dashed #555;
+        border-radius: 12px;
+        text-align: center;
+    }
+
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #2C2C2C !important;
         color: #FFFFFF !important;
@@ -80,7 +88,6 @@ st.markdown("""
         font-family: 'Inter', sans-serif;
         font-weight: 800;
         letter-spacing: -2px;
-        /* Soldan Sağa Yumuşak Mor Geçişi */
         background: linear-gradient(to right, #E9D5FF 0%, #A855F7 50%, #7E22CE 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -133,6 +140,7 @@ st.markdown("""
 # --- FONKSİYONLAR ---
 
 def send_email_with_design(to_email, img_buffer, prompt):
+    # (E-posta fonksiyonu aynı kalıyor)
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
     msg['To'] = to_email
@@ -183,7 +191,8 @@ def get_image_download_link(img, filename, text):
         </a>
     """
 
-def generate_tattoo_stencil(user_prompt, style, placement):
+# --- ANA AI FONKSİYONU (GÜNCELLENDİ: Görsel Desteği Eklendi) ---
+def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         style_details = {
@@ -204,18 +213,42 @@ def generate_tattoo_stencil(user_prompt, style, placement):
             "Minimalist": "Clean, precise, highly refined simple lines. Detail through perfect composition and negative space."
         }
         selected_style_description = style_details.get(style, "High detail tattoo design")
-        base_prompt = (f"A highly detailed, finished digital tattoo design (created in Procreate style) showing: {user_prompt}. "
-                       f"The design flow is intended for a '{placement}' placement, but the image must show ONLY the isolated artwork on flat paper.")
-        technical_requirements = ("REQUIREMENTS: Pure white background (Hex #FFFFFF). Deep black ink only. "
-                                  "High contrast. ABSOLUTELY NO skin texture, NO body parts, and NO anatomy in the image. "
-                                  "Intricate details, clean professional linework, high resolution digital illustration look.")
-        final_prompt = f"{base_prompt} Style: {selected_style_description}. {technical_requirements}"
-        response = client.models.generate_images(model="imagen-4.0-generate-001", prompt=final_prompt, config={"number_of_images": 1, "aspect_ratio": "1:1"})
+
+        # --- PROMPT MANTIĞI (Görsel var mı yok mu?) ---
+        contents = []
+        if input_pil_image:
+            # Eğer görsel varsa, AI'ya görseli ve ona dayalı komutu gönderiyoruz.
+            contents.append(input_pil_image)
+            instruction_base = f"Based on this uploaded image, create a tattoo design modifying it as follows: {user_prompt}. "
+            placement_instruction = f"Ensure the flow is suitable for '{placement}' placement."
+        else:
+            # Görsel yoksa, sadece metin tabanlı üretim.
+            instruction_base = f"A highly detailed, finished digital tattoo design (Procreate style) showing: {user_prompt}. "
+            placement_instruction = f"The design flow is intended for a '{placement}' placement, show ONLY isolated artwork."
+
+        technical_requirements = (
+            "REQUIREMENTS: The final output MUST be a professional tattoo stencil. "
+            "Pure white background (Hex #FFFFFF). Deep black ink only. High contrast. "
+            "ABSOLUTELY NO skin texture, NO body parts, and NO anatomy in the image. "
+            "Intricate details, clean professional linework."
+        )
+        
+        final_prompt = f"{instruction_base} {placement_instruction} Style: {selected_style_description}. {technical_requirements}"
+        contents.append(final_prompt)
+
+        # API ÇAĞRISI (Contents listesi gönderiliyor)
+        response = client.models.generate_images(
+            model="imagen-4.0-generate-001",
+            contents=contents,
+            config={"number_of_images": 1, "aspect_ratio": "1:1"}
+        )
+        
         if response.generated_images:
             image_bytes = response.generated_images[0].image.image_bytes
             return Image.open(BytesIO(image_bytes)), None
         return None, "AI returned empty response."
-    except Exception as e: return None, str(e)
+    except Exception as e:
+        return None, str(e)
 
 # --- UYGULAMA AKIŞI ---
 
@@ -224,11 +257,13 @@ if "generated_img" not in st.session_state:
     st.session_state["last_prompt"] = ""
     st.session_state["last_style"] = "Fine Line" 
     st.session_state["last_placement"] = "Arm"
+    # Yüklenen görseli de hafızada tutalım
+    if "uploaded_ref_image" not in st.session_state:
+        st.session_state["uploaded_ref_image"] = None
 
 # 1. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
     st.markdown("<div style='margin-top: 80px;'></div>", unsafe_allow_html=True)
-    # LOGO BURAYA EKLENDİ
     st.markdown("""
         <div style='text-align: center;'>
             <h1 class='fallink-logo' style='font-size: 4rem; margin: 0;'>Fallink</h1>
@@ -252,7 +287,7 @@ if "logged_in_user" not in st.session_state:
 user = st.session_state["logged_in_user"]
 credits = check_user_credits(user)
 
-# Üst Bilgi Çubuğu (LOGO GÜNCELLENDİ)
+# Üst Bilgi Çubuğu
 st.markdown(f"""
 <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
     <div class='fallink-logo' style='font-size: 2rem;'>Fallink</div>
@@ -263,15 +298,30 @@ st.markdown(f"""
 # GİRİŞ ALANI
 if st.session_state["generated_img"] is None:
     
-    # KART 1: Fikir Alanı
+    # KART 1: Fikir Alanı (Görsel Yükleme Eklendi)
     with st.container():
         st.markdown("### 1. Describe Your Idea")
-        user_prompt = st.text_area("What do you want to get?", height=120, placeholder="E.g. A geometric wolf head, highly detailed, looking fierce...")
         
-        if st.button("🎲 Need Inspiration? (Random Idea)", type="secondary", use_container_width=True):
-            ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
-            user_prompt = random.choice(ideas)
-            st.info(f"💡 Idea selected. Feel free to edit it above.")
+        # --- YENİ: GÖRSEL YÜKLEME ALANI (Expander içinde gizli) ---
+        with st.expander("📸 Upload Reference Image (Optional)", expanded=False):
+            uploaded_file = st.file_uploader("Choose an image to modify...", type=["jpg", "png", "jpeg"])
+            if uploaded_file is not None:
+                # Görseli oturuma kaydet ve küçük bir önizleme göster
+                st.session_state["uploaded_ref_image"] = Image.open(uploaded_file)
+                st.image(st.session_state["uploaded_ref_image"], caption="Reference Image", width=150)
+                st.caption("💡 Now describe how you want to change this image below.")
+            else:
+                # Eğer kullanıcı görseli silerse, oturumdan da sil
+                 st.session_state["uploaded_ref_image"] = None
+        # ---------------------------------------------------------
+
+        user_prompt = st.text_area("What do you want to create or change?", height=120, placeholder="E.g. 'A geometric wolf' OR if image uploaded: 'Remove background, make clouds Japanese style'...")
+        
+        if st.session_state["uploaded_ref_image"] is None:
+            if st.button("🎲 Need Inspiration? (Random Idea)", type="secondary", use_container_width=True):
+                ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
+                user_prompt = random.choice(ideas)
+                st.info(f"💡 Idea selected. Feel free to edit it above.")
 
     # KART 2: Seçenekler
     with st.container():
@@ -292,19 +342,30 @@ if st.session_state["generated_img"] is None:
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
     # ANA BUTON
-    if st.button("✨ GENERATE INK (1 Credit)", type="primary", use_container_width=True):
+    btn_text = "✨ GENERATE INK (1 Credit)"
+    if st.session_state["uploaded_ref_image"] is not None:
+        btn_text = "✨ MODIFY IMAGE (1 Credit)"
+
+    if st.button(btn_text, type="primary", use_container_width=True):
         if credits < 1: st.error("You're out of credits! Please top up.")
-        elif not user_prompt: st.warning("Please describe your idea first.")
+        elif not user_prompt and st.session_state["uploaded_ref_image"] is None: st.warning("Please describe your idea or upload an image.")
         else:
-            with st.spinner("Creating detailed stencil... This may take a moment."):
+            spinner_text = "Creating detailed stencil..."
+            if st.session_state["uploaded_ref_image"] is not None:
+                spinner_text = "Processing image and applying changes..."
+                
+            with st.spinner(spinner_text):
                 new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                # Görseli de fonksiyona gönderiyoruz
+                img, err = generate_tattoo_stencil(user_prompt, style, placement, st.session_state["uploaded_ref_image"])
                 if img:
                     st.session_state["generated_img"] = img
                     st.session_state["last_prompt"] = user_prompt
                     st.session_state["last_style"] = style
                     st.session_state["last_placement"] = placement
                     st.session_state["credits"] = new_credits
+                    # İşlem bitince yüklenen görseli temizleyelim ki kafa karıştırmasın
+                    st.session_state["uploaded_ref_image"] = None 
                     st.rerun()
                 else: st.error(err)
 
@@ -340,6 +401,8 @@ else:
     st.caption("Not quite right? Tweak the idea and try again.")
     
     with st.container():
+        # Not: Refine kısmında görsel yükleme şimdilik yok, sadece prompt ile düzeltme var.
+        # Karmaşıklığı önlemek için böyle bıraktım.
         new_prompt_input = st.text_area("Edit your idea:", value=st.session_state["last_prompt"], height=100)
         
         style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
@@ -354,6 +417,7 @@ else:
              else:
                  with st.spinner("Updating design..."):
                     new_credits = deduct_credit(user, credits)
+                    # Refine ederken görsel göndermiyoruz, sadece text bazlı düzeltme yapıyoruz.
                     img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
                     if img:
                         st.session_state["generated_img"] = img
@@ -366,4 +430,5 @@ else:
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
     if st.button("Start Fresh (New Design)", type="secondary", use_container_width=True):
         st.session_state["generated_img"] = None
+        st.session_state["uploaded_ref_image"] = None # Görseli de temizle
         st.rerun()
