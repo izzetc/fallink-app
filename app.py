@@ -1,4 +1,3 @@
-# ZORUNLU GUNCELLEME - TARIH VE SAAT EKLE (Örn: # GUNCELLEME 06.12.2023 15:30)
 import streamlit as st
 from google import genai
 from PIL import Image
@@ -41,14 +40,14 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM (IFRAME UYUMLU) ---
+# --- CSS TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        background-color: #FAFAFA; /* Sitenin arka plan rengiyle aynı olsun */
+        background-color: #FAFAFA;
         color: #111;
     }
     
@@ -59,28 +58,28 @@ st.markdown("""
         border: 1px solid #d1d1d1 !important;
         border-radius: 8px !important;
     }
-
-    /* --- STREAMLIT ARAYÜZÜNÜ GİZLEME (TEMİZLİK) --- */
-    /* Üstteki renkli çizgiyi ve header'ı gizle */
-    header {visibility: hidden;}
-    /* En alttaki 'Made with Streamlit' yazısını gizle */
-    footer {visibility: hidden;}
-    /* Sağ üstteki hamburger menüyü gizle */
-    #MainMenu {visibility: hidden;}
-    /* Sayfa kenar boşluklarını sıfırla ki sitene tam otursun */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+    
+    .main-title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 0.5rem;
+        color: #111;
     }
     
-    /* Butonlar */
+    /* Standart Butonlar */
     .stButton > button {
         background-color: #111 !important;
         color: white !important;
         border-radius: 10px !important;
-        width: 100%; /* Buton tam genişlikte olsun */
+        padding: 10px 20px !important;
+        border: none !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    }
+    .stButton > button:hover {
+        background-color: #333 !important;
+        transform: translateY(-2px);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -98,7 +97,7 @@ def send_email_with_design(to_email, img_buffer, prompt):
     <html>
       <body>
         <h2>Your Design is Here!</h2>
-        <p>Here is the AI-generated tattoo stencil you created with Fallink.</p>
+        <p>Here is the high-detail AI tattoo design you created with Fallink.</p>
         <p><strong>Idea:</strong> {prompt}</p>
         <br>
         <p>See you at the studio!</p>
@@ -149,11 +148,44 @@ def generate_tattoo_stencil(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        base_prompt = f"Professional tattoo stencil design of: {user_prompt}. Placement: {placement}."
-        style_prompt = f"Style: {style}. Requirements: Clean white background, high contrast black ink, isolated subject, vector style, no skin texture."
-        final_prompt = f"{base_prompt} {style_prompt}"
+        # --- GÜNCELLENMİŞ VE DETAYLANDIRILMIŞ STİL TANIMLARI ---
+        style_details = {
+            "Fine Line": "Intricate ultra-thin single needle lines, high precision, delicate details, elegant composition, clean blackwork.",
+            "Micro Realism": "Highly detailed micro realism, sophisticated soft grey shading, photographic quality, depth, complex textures rendered in small scale.",
+            "Dotwork/Mandala": "Complex stippling texture, precise pointillism, intricate sacred geometry patterns, detailed shading through dots.",
+            "Old School (Traditional)": "Bold clean outlines, solid heavy black shading, highly detailed classic iconography, high contrast, finished flash sheet look.",
+            "Sketch/Abstract": "Detailed artistic pencil sketch style, expressive lines, cross-hatching shading, dynamic composition, unfinished yet complex look.",
+            "Tribal/Blackwork": "Intricate solid black patterns, complex Polynesian or modern ornamental shapes, high contrast, heavy saturation.",
+            "Japanese (Irezumi)": "Highly detailed traditional Japanese style, complex background elements (waves/clouds), bold flowing outlines, rich detail.",
+            "Geometric": "Complex mathematical shapes, intricate sacred geometry, sacred patterns, precise sharp lines, detailed architectural feel.",
+            "Watercolor": "Detailed black and grey ink wash style, complex liquid textures, artistic drips, soft gradients mimicking watercolor painting.",
+            "Neo-Traditional": "Highly detailed illustrated realism, varying line weights, decorative filigree, complex composition with Art Nouveau influence.",
+            "Trash Polka": "Complex chaotic composition, detailed realism elements mixed with abstract brush strokes and typography, high energy.",
+            "Cyber Sigilism": "Intricate futuristic sharp lines, complex aggressive patterns, Y2K aesthetic, detailed chrome-like texture feel.",
+            "Chicano": "Highly detailed black and grey fine art, complex shading, realistic portraits or script, rich cultural details.",
+            "Engraving/Woodcut": "Highly intricate vintage illustration style, dense cross-hatching shading, linocut texture, detailed antique print look.",
+            "Minimalist": "Clean, precise, highly refined simple lines. Detail through perfect composition and negative space."
+        }
+        
+        selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        # Tek Resim Modu
+        # --- YENİ GÜÇLÜ PROMPT YAPISI (Procreate & Detay Odaklı) ---
+        # Placement'ı sadece "akış" için kullanıyoruz, çizdirmemek için uyarıyoruz.
+        base_prompt = (
+            f"A highly detailed, finished digital tattoo design (created in Procreate style) showing: {user_prompt}. "
+            f"The design flow is intended for a '{placement}' placement, but the image must show ONLY the isolated artwork on flat paper."
+        )
+        
+        technical_requirements = (
+            "REQUIREMENTS: Pure white background (Hex #FFFFFF). Deep black ink only. "
+            "High contrast. ABSOLUTELY NO skin texture, NO body parts, and NO anatomy in the image. "
+            "Intricate details, clean professional linework, high resolution digital illustration look. "
+            "Not a simple vector, but a complex digital drawing ready for stenciling."
+        )
+        
+        final_prompt = f"{base_prompt} Style: {selected_style_description}. {technical_requirements}"
+
+        # API ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001", 
             prompt=final_prompt,
@@ -164,6 +196,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
             image_bytes = response.generated_images[0].image.image_bytes
             img = Image.open(BytesIO(image_bytes))
             return img, None
+            
         return None, "AI returned empty response."
     except Exception as e:
         return None, str(e)
@@ -173,7 +206,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
 if "generated_img" not in st.session_state:
     st.session_state["generated_img"] = None
     st.session_state["last_prompt"] = ""
-    st.session_state["last_style"] = "Fine Line" # Varsayılan
+    st.session_state["last_style"] = "Fine Line" 
     st.session_state["last_placement"] = "Arm"
 
 # 1. LOGIN
@@ -207,20 +240,68 @@ with c2:
 
 st.markdown("---")
 
-# Eğer henüz görsel üretilmediyse ANA GİRİŞ ALANINI göster
+# Eğer görsel yoksa GİRİŞ ALANI
 if st.session_state["generated_img"] is None:
     c_left, c_right = st.columns([1.5, 1])
 
     with c_left:
-        user_prompt = st.text_area("Describe your tattoo idea", height=150, placeholder="E.g. A geometric wolf head...")
+        user_prompt = st.text_area("Describe your tattoo idea", height=150, placeholder="E.g. A geometric wolf head, highly detailed...")
+        
+        # --- RANDOM IDEAS (50 ADET) ---
         if st.button("🎲 Random Idea"):
-            ideas = ["Minimalist paper plane", "Snake wrapped around dagger", "Realistic eye crying galaxy", "Geometric deer head"]
+            ideas = [
+                "A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", 
+                "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", 
+                "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)",
+                "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose",
+                "Phoenix rising from ashes, watercolor style", "Compass with mountains inside",
+                "Lion head with a crown of thorns", "Hourglass with sand turning into birds",
+                "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait",
+                "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower",
+                "Viking ship in a storm", "Medusa head with stone eyes",
+                "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design",
+                "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat",
+                "Moth with skull pattern on wings", "Phonograph playing musical notes",
+                "Pocket watch with exposed gears", "Tree of life with deep roots",
+                "Raven perched on a skull", "Abstract soundwave of a heartbeat",
+                "Barcode melting into liquid", "Chess piece (King) falling over",
+                "Spartan helmet with spears", "Feather turning into a flock of birds",
+                "Lotus flower unalome", "Dragon wrapping around the arm",
+                "Butterfly with one wing as flowers", "Vintage camera illustration",
+                "Micro realistic bee", "Portrait of a Greek statue broken",
+                "Cyber sigilism pattern on spine", "Trash polka style heart and arrows",
+                "Egyptian Anubis god profile", "Nordic runes circle",
+                "Sword piercing a heart", "Alien spaceship beaming up a cow",
+                "Jellyfish floating in space", "Owl with piercing eyes",
+                "Grim reaper playing chess", "Angel wings on back",
+                "Dna helix made of tree branches", "Retro cassette tape"
+            ]
             user_prompt = random.choice(ideas)
-            st.info(f"Try: {user_prompt}")
+            st.info(f"Try this: {user_prompt}")
 
     with c_right:
-        style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"))
-        placement = st.selectbox("Placement", ("Arm", "Leg", "Chest", "Back", "Wrist"))
+        # --- STİL LİSTESİ (15 ADET) ---
+        style_options = (
+            "Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", 
+            "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric",
+            "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", 
+            "Chicano", "Engraving/Woodcut", "Minimalist"
+        )
+        style = st.selectbox("Style", style_options)
+        
+        # --- PLACEMENT + OTHER SEÇENEĞİ ---
+        placement_options = (
+            "Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", 
+            "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", 
+            "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)"
+        )
+        placement_select = st.selectbox("Placement (Defines Flow, Not Drawn)", placement_options)
+        
+        # Eğer 'Other' seçilirse yazı kutusu aç
+        if placement_select == "Other (Custom)":
+            placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow")
+        else:
+            placement = placement_select
         
         if st.button("Generate Ink ✨ (1 Credit)", type="primary", use_container_width=True):
             if credits < 1:
@@ -228,9 +309,10 @@ if st.session_state["generated_img"] is None:
             elif not user_prompt:
                 st.warning("Please describe an idea.")
             else:
-                with st.spinner("Designing..."):
+                with st.spinner("Designing detailed artwork..."):
                     new_credits = deduct_credit(user, credits)
                     img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                    
                     if img:
                         st.session_state["generated_img"] = img
                         st.session_state["last_prompt"] = user_prompt
@@ -241,12 +323,12 @@ if st.session_state["generated_img"] is None:
                     else:
                         st.error(err)
 
-# 3. SONUÇ EKRANI (Resim Varsa Burası Çalışır)
+# 3. SONUÇ EKRANI
 else:
     st.markdown("### Your Design")
     
     img = st.session_state["generated_img"]
-    st.image(img, caption="Fallink AI Design", width=400)
+    st.image(img, caption="Fallink High-Detail Design", width=400)
     
     # İndirme ve Email
     col_d1, col_d2 = st.columns(2)
@@ -269,18 +351,29 @@ else:
 
     st.markdown("---")
     
-    # 4. YENİDEN DÜZENLEME ALANI (UPDATE & RETRY)
+    # 4. YENİDEN DÜZENLEME (UPDATE)
     st.markdown("#### ✏️ Want changes?")
-    st.caption("Not exactly what you wanted? Describe changes below to generate a new version.")
+    st.caption("Refine your idea and generate a new detailed version.")
     
     with st.container(border=True):
-        # Eski promptu varsayılan olarak getiriyoruz ki üzerinde oynayabilsin
         new_prompt_input = st.text_area("Refine your idea:", value=st.session_state["last_prompt"], height=100)
         
         col_u1, col_u2 = st.columns(2)
         with col_u1:
-             # Stili de değiştirmek isteyebilir
-             new_style = st.selectbox("Style", ("Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"), index=["Fine Line", "Micro Realism", "Dotwork", "Old School", "Sketch", "Tribal"].index(st.session_state["last_style"]))
+             # Stili tekrar seçebilsin
+             style_options_refine = (
+                "Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", 
+                "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric",
+                "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", 
+                "Chicano", "Engraving/Woodcut", "Minimalist"
+            )
+             current_style = st.session_state["last_style"]
+             idx = 0
+             if current_style in style_options_refine:
+                 idx = style_options_refine.index(current_style)
+                 
+             new_style = st.selectbox("Style", style_options_refine, index=idx)
+             
         with col_u2:
              if st.button("Update Design (1 Credit)", type="secondary", use_container_width=True):
                  if credits < 1:
@@ -288,6 +381,7 @@ else:
                  else:
                      with st.spinner("Updating design..."):
                         new_credits = deduct_credit(user, credits)
+                        # Placement değişmiyor, sessiondan alıyoruz
                         img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
                         if img:
                             st.session_state["generated_img"] = img
@@ -298,7 +392,6 @@ else:
                         else:
                             st.error(err)
 
-    # En başa dönmek için buton
     if st.button("Start Fresh (Clear All)"):
         st.session_state["generated_img"] = None
         st.rerun()
