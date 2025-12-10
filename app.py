@@ -241,8 +241,9 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- ANA AI FONKSİYONU (TEXT ONLY - STABLE) ---
-def generate_tattoo_stencil(user_prompt, style, placement):
+# --- ANA AI FONKSİYONU (İsim Değişti ve Prompt Güncellendi) ---
+def generate_tattoo_design(user_prompt, style):
+    # Not: 'placement' argümanı artık kullanılmıyor ve fonksiyondan çıkarıldı.
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         style_details = {
@@ -264,15 +265,16 @@ def generate_tattoo_stencil(user_prompt, style, placement):
         }
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        base_prompt = f"A highly detailed, finished digital tattoo design stencil (Procreate style) showing: {user_prompt}. Placement flow context: {placement}."
+        # --- YENİ GÜÇLÜ PROMPT ---
+        # Placement bilgisi tamamen çıkarıldı.
+        base_prompt = f"A highly detailed, professional tattoo design showing: {user_prompt}. The design is isolated centered artwork, ready for a flash sheet."
 
-        # --- KRİTİK TEKNİK ZORUNLULUKLAR ---
+        # --- KRİTİK TEKNİK ZORUNLULUKLAR (Daha da katılaştırıldı) ---
         technical_requirements = (
-            "CRITICAL OUTPUT RULES: The final image MUST be a clean, black ink tattoo stencil on plain white paper. "
-            "Do NOT generate realistic skin, body parts, blood, or redness. "
-            "Do NOT use colors other than black ink. "
-            "The style must be a finished flash design ready for transfer. "
-            "Show ONLY the isolated design."
+            "CRITICAL OUTPUT RULES: The final image MUST show ONLY the isolated tattoo artwork centered on a plain white background. "
+            "It must NOT show any human body parts, skin, arms, legs, or models. "
+            "Do NOT generate realistic skin textures, blood, or redness. "
+            "The style must be a clean, finished black ink flash design. No photo-realism of body parts."
         )
         
         final_prompt = f"{base_prompt} Style details: {selected_style_description}. {technical_requirements}"
@@ -300,7 +302,7 @@ if "generated_img_list" not in st.session_state:
 if "last_prompt" not in st.session_state:
     st.session_state["last_prompt"] = ""
     st.session_state["last_style"] = "Fine Line" 
-    st.session_state["last_placement"] = "Arm"
+    # Placement state'i artık gerekmediği için kaldırıldı.
 
 # 2. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
@@ -308,7 +310,7 @@ if "logged_in_user" not in st.session_state:
     st.markdown("""
         <div style='text-align: center;'>
             <h1 class='fallink-logo' style='font-size: 4rem; margin: 0;'>Fallink</h1>
-            <p style='color:#aaa; margin-top: 10px; font-weight: 600;'>AI Tattoo Stencil Studio</p>
+            <p style='color:#aaa; margin-top: 10px; font-weight: 600;'>AI Tattoo Design Studio</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -351,37 +353,31 @@ if not st.session_state["generated_img_list"]:
             user_prompt = random.choice(ideas)
             st.info(f"Idea selected. Edit above if needed.")
 
-    # KART 2: Seçenekler
+    # KART 2: Seçenekler (Placement Kaldırıldı)
     with st.container():
         st.markdown("### 2. Customize Details")
         
         style_options = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
         style = st.selectbox("Choose Style", style_options)
         
-        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
+        # Placement seçimi artık yok.
 
-        placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
-        placement_select = st.selectbox("Body Placement (Defines Flow)", placement_options)
-        if placement_select == "Other (Custom)":
-            placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow")
-        else:
-            placement = placement_select
-            
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    # ANA BUTON
-    if st.button("GENERATE STENCIL (1 Credit)", type="primary", use_container_width=True):
+    # ANA BUTON (Metin Değişti)
+    if st.button("GENERATE DESIGN (1 Credit)", type="primary", use_container_width=True):
         if credits < 1: st.error("You're out of credits. Please top up.")
         elif not user_prompt: st.warning("Please describe your idea.")
         else:
-            with st.spinner("Creating detailed stencil..."):
+            with st.spinner("Creating tattoo design..."):
                 new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_stencil(user_prompt, style, placement)
+                # Placement argümanı gönderilmiyor
+                img, err = generate_tattoo_design(user_prompt, style)
                 if img:
                     st.session_state["generated_img_list"].append(img)
                     st.session_state["last_prompt"] = user_prompt
                     st.session_state["last_style"] = style
-                    st.session_state["last_placement"] = placement
+                    # Placement kaydetmeye gerek yok
                     st.session_state["credits"] = new_credits
                     st.rerun()
                 else: st.error(err)
@@ -433,16 +429,18 @@ else:
         current_style = st.session_state["last_style"]
         idx = style_options_refine.index(current_style) if current_style in style_options_refine else 0
         new_style = st.selectbox("Change Style", style_options_refine, index=idx)
+        # Placement seçimi burada da yok.
              
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
         
+        # BUTON METNİ GÜNCELLENDİ
         if st.button("GENERATE NEW VERSION (1 Credit)", type="primary", use_container_width=True):
              if credits < 1: st.error("Not enough credits.")
              else:
                  with st.spinner("Generating new version..."):
                     new_credits = deduct_credit(user, credits)
-                    # Text-only üretim
-                    img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
+                    # Placement argümanı yok
+                    img, err = generate_tattoo_design(new_prompt_input, new_style)
                     if img:
                         st.session_state["generated_img_list"].append(img)
                         st.session_state["last_prompt"] = new_prompt_input
