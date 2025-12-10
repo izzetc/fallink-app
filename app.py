@@ -22,11 +22,11 @@ except:
     st.error("⚠️ Eksik Anahtarlar! Lütfen Streamlit Secrets ayarlarını kontrol et.")
     st.stop()
 
-# --- SAYFA AYARLARI (MOBİL İÇİN KRTİK) ---
+# --- SAYFA AYARLARI ---
 st.set_page_config(
     page_title="Fallink",
     page_icon="✒️",
-    layout="centered", # Mobilde ortalasın
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
@@ -40,64 +40,55 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM (DARK MODE PREMIUM MOBILE) ---
+# --- CSS TASARIM & LOGO STİLİ ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
-    /* --- GENEL SAYFA YAPISI --- */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        background-color: #121212 !important; /* Koyu Arka Plan */
-        color: #E0E0E0 !important; /* Açık Renk Yazı */
+        background-color: #121212 !important;
+        color: #E0E0E0 !important;
     }
 
-    /* --- KONTEYNERLER VE KARTLAR --- */
     .stApp {
         background-color: #121212;
     }
     
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
-        background-color: #1E1E1E; /* Kart Rengi */
+        background-color: #1E1E1E;
         border-radius: 16px;
         border: 1px solid #333;
         padding: 20px;
         margin-bottom: 15px;
     }
 
-    /* --- INPUT ALANLARI --- */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: #2C2C2C !important;
         color: #FFFFFF !important;
         border: 1px solid #444 !important;
         border-radius: 12px !important;
     }
-    /* Dropdown Menü İçi */
-    div[data-baseweb="popover"] {
-        background-color: #2C2C2C !important;
-    }
-    div[data-baseweb="menu"] {
+    
+    div[data-baseweb="popover"], div[data-baseweb="menu"] {
         background-color: #2C2C2C !important;
         color: #FFF !important;
     }
     
-    /* --- BAŞLIKLAR --- */
-    .main-title {
-        font-size: 2.5rem;
+    /* --- ÖZEL FALLINK LOGO CSS --- */
+    .fallink-logo {
+        font-family: 'Inter', sans-serif;
         font-weight: 800;
-        text-align: center;
-        margin-bottom: 1rem;
-        background: linear-gradient(90deg, #FFFFFF, #8A2BE2); /* Beyazdan Mora Geçiş */
+        letter-spacing: -2px;
+        /* Soldan Sağa Yumuşak Mor Geçişi */
+        background: linear-gradient(to right, #E9D5FF 0%, #A855F7 50%, #7E22CE 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-    }
-    h1, h2, h3 {
-        color: #FFFFFF !important;
-        font-weight: 700 !important;
+        background-clip: text;
+        display: inline-block;
     }
     
-    /* --- BUTONLAR --- */
-    /* Birincil Buton (Generate - Parlak Mor) */
+    /* Butonlar */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -107,10 +98,9 @@ st.markdown("""
         font-weight: 700 !important;
         font-size: 18px !important;
         box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4) !important;
-        width: 100%; /* Mobilde tam genişlik */
+        width: 100%;
     }
     
-    /* İkincil Buton (Random Idea, Update - Koyu Gri) */
     .stButton > button[kind="secondary"] {
         background-color: #333333 !important;
         color: #E0E0E0 !important;
@@ -120,33 +110,21 @@ st.markdown("""
         width: 100%;
     }
 
-    /* Buton Hover/Aktif */
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.3) !important;
-    }
-    .stButton > button:active {
-        transform: scale(0.98);
-    }
-
-    /* --- GİZLEME BÜYÜSÜ (TEMİZLİK) --- */
     header {visibility: hidden !important;}
     footer {visibility: hidden !important;}
     #MainMenu {visibility: hidden !important;}
     .stDeployButton {display:none;}
     
-    /* Kenar Boşluklarını Ayarla (Mobil için daralt) */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 3rem !important;
-        max-width: 600px; /* Mobilde çok yayılmasın */
+        max-width: 600px;
     }
     
-    /* Kredi Bilgisi */
     .credit-info {
         text-align: right;
         font-weight: 700;
-        color: #8A2BE2; /* Mor vurgu */
+        color: #E0E0E0;
     }
 
 </style>
@@ -197,7 +175,6 @@ def get_image_download_link(img, filename, text):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    # İndirme butonu da artık bir "Button" gibi görünecek
     return f"""
         <a href="data:file/png;base64,{img_str}" download="{filename}" 
            style="display: block; text-align: center; background-color: #333; color: #FFF; 
@@ -240,7 +217,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
         return None, "AI returned empty response."
     except Exception as e: return None, str(e)
 
-# --- UYGULAMA AKIŞI (REFACTOR EDİLMİŞ - DİKEY AKIŞ) ---
+# --- UYGULAMA AKIŞI ---
 
 if "generated_img" not in st.session_state:
     st.session_state["generated_img"] = None
@@ -248,11 +225,16 @@ if "generated_img" not in st.session_state:
     st.session_state["last_style"] = "Fine Line" 
     st.session_state["last_placement"] = "Arm"
 
-# 1. LOGIN EKRANI (Basit ve Merkezde)
+# 1. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
     st.markdown("<div style='margin-top: 80px;'></div>", unsafe_allow_html=True)
-    st.markdown("<h1 class='main-title'>Fallink.</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#aaa;'>AI Powered Tattoo Stencil Studio</p>", unsafe_allow_html=True)
+    # LOGO BURAYA EKLENDİ
+    st.markdown("""
+        <div style='text-align: center;'>
+            <h1 class='fallink-logo' style='font-size: 4rem; margin: 0;'>Fallink</h1>
+            <p style='color:#aaa; margin-top: 10px;'>AI Powered Tattoo Stencil Studio</p>
+        </div>
+    """, unsafe_allow_html=True)
     
     with st.container():
         username_input = st.text_input("Enter Access Code", placeholder="Code here...")
@@ -266,19 +248,19 @@ if "logged_in_user" not in st.session_state:
                 st.rerun()
     st.stop()
 
-# 2. STÜDYO ARAYÜZÜ (DİKEY AKIŞ BAŞLIYOR)
+# 2. STÜDYO ARAYÜZÜ
 user = st.session_state["logged_in_user"]
 credits = check_user_credits(user)
 
-# Üst Bilgi Çubuğu
+# Üst Bilgi Çubuğu (LOGO GÜNCELLENDİ)
 st.markdown(f"""
 <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;'>
-    <div style='font-weight: 600; font-size: 1.2rem;'>Fallink Studio</div>
+    <div class='fallink-logo' style='font-size: 2rem;'>Fallink</div>
     <div class='credit-info'>{credits} 💎 Credits</div>
 </div>
 """, unsafe_allow_html=True)
 
-# Eğer görsel yoksa GİRİŞ ALANI (TÜM SÜTUNLAR KALDIRILDI)
+# GİRİŞ ALANI
 if st.session_state["generated_img"] is None:
     
     # KART 1: Fikir Alanı
@@ -286,7 +268,6 @@ if st.session_state["generated_img"] is None:
         st.markdown("### 1. Describe Your Idea")
         user_prompt = st.text_area("What do you want to get?", height=120, placeholder="E.g. A geometric wolf head, highly detailed, looking fierce...")
         
-        # Random butonu hemen altında
         if st.button("🎲 Need Inspiration? (Random Idea)", type="secondary", use_container_width=True):
             ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
             user_prompt = random.choice(ideas)
@@ -296,13 +277,11 @@ if st.session_state["generated_img"] is None:
     with st.container():
         st.markdown("### 2. Customize It")
         
-        # Stil Seçimi
         style_options = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
         style = st.selectbox("Choose Style", style_options)
         
-        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) # Boşluk
+        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
 
-        # Yerleşim Seçimi
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         placement_select = st.selectbox("Body Placement (Defines Flow)", placement_options)
         if placement_select == "Other (Custom)":
@@ -310,9 +289,9 @@ if st.session_state["generated_img"] is None:
         else:
             placement = placement_select
             
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True) # Boşluk
+    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    # ANA BUTON (Kocaman ve En Altta)
+    # ANA BUTON
     if st.button("✨ GENERATE INK (1 Credit)", type="primary", use_container_width=True):
         if credits < 1: st.error("You're out of credits! Please top up.")
         elif not user_prompt: st.warning("Please describe your idea first.")
@@ -329,19 +308,16 @@ if st.session_state["generated_img"] is None:
                     st.rerun()
                 else: st.error(err)
 
-# 3. SONUÇ EKRANI (DİKEY AKIŞ)
+# SONUÇ EKRANI
 else:
     st.markdown("<h2 style='text-align:center;'>Your Design is Ready! 🔥</h2>", unsafe_allow_html=True)
     
-    # Görseli ortala
     with st.container():
         img = st.session_state["generated_img"]
-        # Streamlit'te görseli tam ortalamak için bir hile
         col1, col2, col3 = st.columns([1,6,1])
         with col2:
              st.image(img, caption="High-Detail Procreate Style Stencil", use_column_width=True)
 
-    # Aksiyon Butonları (Alt Alta)
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
     st.markdown(get_image_download_link(img, "fallink_design.png", "Save Image to Photos"), unsafe_allow_html=True)
     st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
@@ -360,14 +336,12 @@ else:
 
     st.markdown("---")
     
-    # 4. YENİDEN DÜZENLEME (UPDATE) - Yine Dikey Akış
     st.markdown("#### ✏️ Refine & Regenerate")
     st.caption("Not quite right? Tweak the idea and try again.")
     
     with st.container():
         new_prompt_input = st.text_area("Edit your idea:", value=st.session_state["last_prompt"], height=100)
         
-        # Stil Seçimi (Yine alt alta)
         style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
         current_style = st.session_state["last_style"]
         idx = style_options_refine.index(current_style) if current_style in style_options_refine else 0
