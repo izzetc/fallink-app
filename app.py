@@ -40,9 +40,8 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM ---
-st.markdown("""
-# --- CSS TASARIM (iOS 17+ GLASSPHORISM STYLE) ---
+# --- CSS TASARIM (iOS 27 FUTURE STYLE) ---
+# HATA ÇÖZÜMÜ: CSS kodları artık tırnakların içinde güvenli.
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -57,9 +56,9 @@ st.markdown("""
     /* --- INPUT ALANLARI (Buzlu Cam Etkisi) --- */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
         background-color: rgba(255, 255, 255, 0.8) !important;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.5) !important;
         border-radius: 16px !important;
         color: #1C1C1E !important;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02) !important;
@@ -96,7 +95,7 @@ st.markdown("""
         font-weight: 600 !important;
         font-size: 16px !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        transition: transform 0.1s ease, box-shadow 0.2s ease;
+        transition: transform 0.1s ease, box-shadow 0.2s ease !important;
     }
     
     /* İkincil Buton (Gri) */
@@ -120,9 +119,10 @@ st.markdown("""
     div[data-testid="stExpander"], div[data-testid="stContainer"] {
         background-color: rgba(255, 255, 255, 0.7);
         border-radius: 20px;
-        padding: 10px;
+        padding: 20px;
         border: 1px solid rgba(255, 255, 255, 0.5);
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        backdrop-filter: blur(10px);
     }
 
     /* --- YÜKLEME ANİMASYONU (Spinner) --- */
@@ -130,10 +130,16 @@ st.markdown("""
         border-top-color: #007AFF !important;
     }
     
-    /* --- BİLGİ KUTULARI (Toast/Success) --- */
-    .stSuccess, .stInfo, .stWarning, .stError {
-        border-radius: 16px !important;
-        font-weight: 500;
+    /* --- GİZLEME BÜYÜSÜ (TEMİZLİK) --- */
+    header {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    #MainMenu {visibility: hidden !important;}
+    .stDeployButton {display:none;}
+    
+    /* Kenar Boşluklarını Ayarla */
+    .block-container {
+        padding-top: 2rem !important;
+        padding-bottom: 2rem !important;
     }
 
 </style>
@@ -224,8 +230,7 @@ def generate_tattoo_stencil(user_prompt, style, placement):
         
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        # --- YENİ GÜÇLÜ PROMPT YAPISI (Procreate & Detay Odaklı) ---
-        # Placement'ı sadece "akış" için kullanıyoruz, çizdirmemek için uyarıyoruz.
+        # --- GÜÇLÜ PROMPT YAPISI ---
         base_prompt = (
             f"A highly detailed, finished digital tattoo design (created in Procreate style) showing: {user_prompt}. "
             f"The design flow is intended for a '{placement}' placement, but the image must show ONLY the isolated artwork on flat paper."
@@ -273,7 +278,7 @@ if "logged_in_user" not in st.session_state:
     with col2:
         with st.container(border=True):
             username_input = st.text_input("Access Code", placeholder="Enter code...")
-            if st.button("Enter Studio", use_container_width=True):
+            if st.button("Enter Studio", type="primary", use_container_width=True):
                 credits = check_user_credits(username_input)
                 if credits == -1:
                     st.error("Invalid code.")
@@ -302,7 +307,7 @@ if st.session_state["generated_img"] is None:
     with c_left:
         user_prompt = st.text_area("Describe your tattoo idea", height=150, placeholder="E.g. A geometric wolf head, highly detailed...")
         
-        # --- RANDOM IDEAS (50 ADET) ---
+        # --- RANDOM IDEAS ---
         if st.button("🎲 Random Idea"):
             ideas = [
                 "A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", 
@@ -335,7 +340,7 @@ if st.session_state["generated_img"] is None:
             st.info(f"Try this: {user_prompt}")
 
     with c_right:
-        # --- STİL LİSTESİ (15 ADET) ---
+        # --- STİL LİSTESİ ---
         style_options = (
             "Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", 
             "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric",
@@ -350,7 +355,7 @@ if st.session_state["generated_img"] is None:
             "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", 
             "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)"
         )
-        placement_select = st.selectbox("Placement (Defines Flow, Not Drawn)", placement_options)
+        placement_select = st.selectbox("Placement (Flow)", placement_options)
         
         # Eğer 'Other' seçilirse yazı kutusu aç
         if placement_select == "Other (Custom)":
