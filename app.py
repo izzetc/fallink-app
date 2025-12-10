@@ -42,45 +42,100 @@ supabase = init_connection()
 
 # --- CSS TASARIM ---
 st.markdown("""
+# --- CSS TASARIM (iOS 17+ GLASSPHORISM STYLE) ---
+st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
+    /* --- GENEL SAYFA YAPISI --- */
     html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #FAFAFA;
-        color: #111;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+        background-color: #F2F2F7; /* Apple Sistem Grisi */
+        color: #1C1C1E;
     }
     
-    /* Input alanları */
+    /* --- INPUT ALANLARI (Buzlu Cam Etkisi) --- */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-        background-color: #FFFFFF !important; 
-        color: #000000 !important;
-        border: 1px solid #d1d1d1 !important;
-        border-radius: 8px !important;
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 16px !important;
+        color: #1C1C1E !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02) !important;
+        transition: all 0.2s ease;
+        padding: 12px !important;
     }
     
+    /* Inputa Tıklayınca (Focus) */
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border: 1px solid #007AFF !important; /* Apple Mavisi */
+        box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1) !important;
+    }
+    
+    /* --- BAŞLIKLAR --- */
     .main-title {
-        font-size: 2.5rem;
+        font-size: 3rem;
         font-weight: 800;
         text-align: center;
         margin-bottom: 0.5rem;
-        color: #111;
+        background: -webkit-linear-gradient(45deg, #1C1C1E, #3A3A3C);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -1.5px;
     }
     
-    /* Standart Butonlar */
-    .stButton > button {
-        background-color: #111 !important;
+    /* --- BUTONLAR (Apple Style) --- */
+    /* Birincil Buton (Siyah) */
+    .stButton > button[kind="primary"] {
+        background-color: #000000 !important;
         color: white !important;
-        border-radius: 10px !important;
-        padding: 10px 20px !important;
+        border-radius: 99px !important; /* Tam Yuvarlak */
+        padding: 14px 28px !important;
         border: none !important;
         font-weight: 600 !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+        font-size: 16px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    
+    /* İkincil Buton (Gri) */
+    .stButton > button[kind="secondary"] {
+        background-color: #E5E5EA !important;
+        color: #000000 !important;
+        border-radius: 99px !important;
+        border: none !important;
+        font-weight: 500 !important;
+    }
+
+    /* Buton Tıklama Efekti */
+    .stButton > button:active {
+        transform: scale(0.96);
     }
     .stButton > button:hover {
-        background-color: #333 !important;
-        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.2) !important;
     }
+
+    /* --- KARTLAR & KUTULAR --- */
+    div[data-testid="stExpander"], div[data-testid="stContainer"] {
+        background-color: rgba(255, 255, 255, 0.7);
+        border-radius: 20px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+    }
+
+    /* --- YÜKLEME ANİMASYONU (Spinner) --- */
+    .stSpinner > div {
+        border-top-color: #007AFF !important;
+    }
+    
+    /* --- BİLGİ KUTULARI (Toast/Success) --- */
+    .stSuccess, .stInfo, .stWarning, .stError {
+        border-radius: 16px !important;
+        font-weight: 500;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
