@@ -133,7 +133,7 @@ st.markdown("""
         color: #E0E0E0;
     }
     
-    /* Çoklu görsel indirme butonu için */
+    /* Çoklu görsel indirme butonu */
     .multi-download-btn {
         display: block; 
         text-align: center; 
@@ -196,14 +196,13 @@ def get_image_download_link(img, filename, text):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    # CSS class eklendi
     return f"""
         <a href="data:file/png;base64,{img_str}" download="{filename}" class="multi-download-btn">
            📥 {text}
         </a>
     """
 
-# --- ANA AI FONKSİYONU ---
+# --- ANA AI FONKSİYONU (DÜZELTİLMİŞ) ---
 def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -226,15 +225,35 @@ def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None)
         }
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        contents = []
+        # --- GÖRSEL YÜKLEME MANTIĞI (VISION TO TEXT) ---
+        final_prompt_text = ""
+        
         if input_pil_image:
-            contents.append(input_pil_image)
-            instruction_base = f"Based on this uploaded image, create a tattoo design modifying it as follows: {user_prompt}. "
-            placement_instruction = f"Ensure the flow is suitable for '{placement}' placement."
+            # 1. ADIM: GEMINI'YE GÖRSELİ GÖSTERİP TARİF ETTİR
+            # Resmi analiz edip dövme promptuna çevirmesini istiyoruz
+            vision_prompt = f"""
+            Analyze this uploaded image. The user wants to use it as a reference for a tattoo design.
+            User instruction: "{user_prompt}".
+            Describe the image in high detail, focusing on the main subject and composition, BUT apply the user's requested changes.
+            Write a prompt that I can feed into an image generator to recreate this as a tattoo stencil.
+            """
+            
+            vision_response = client.models.generate_content(
+                model="gemini-2.0-flash-exp", # Gören model
+                contents=[input_pil_image, vision_prompt]
+            )
+            
+            # Gemini'nin oluşturduğu "Gelişmiş Prompt"u alıyoruz
+            ai_generated_description = vision_response.text
+            
+            # Artık elimizde süper detaylı bir metin var.
+            base_prompt = f"Tattoo design based on description: {ai_generated_description}. Placement flow: {placement}."
+            
         else:
-            instruction_base = f"A highly detailed, finished digital tattoo design (Procreate style) showing: {user_prompt}. "
-            placement_instruction = f"The design flow is intended for a '{placement}' placement, show ONLY isolated artwork."
+            # Görsel yoksa direkt metni kullan
+            base_prompt = f"A highly detailed, finished digital tattoo design (Procreate style) showing: {user_prompt}. Placement flow: {placement}."
 
+        # --- ORTAK TEKNİK ZORUNLULUKLAR ---
         technical_requirements = (
             "REQUIREMENTS: The final output MUST be a professional tattoo stencil. "
             "Pure white background (Hex #FFFFFF). Deep black ink only. High contrast. "
@@ -242,12 +261,13 @@ def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None)
             "Intricate details, clean professional linework."
         )
         
-        final_prompt = f"{instruction_base} {placement_instruction} Style: {selected_style_description}. {technical_requirements}"
-        contents.append(final_prompt)
+        final_prompt = f"{base_prompt} Style: {selected_style_description}. {technical_requirements}"
 
+        # 2. ADIM: IMAGEN İLE ÇİZİM (SADECE METİN GÖNDERİYORUZ)
+        # Artık 'contents' değil, sadece 'prompt' gönderiyoruz. Hata çözüldü.
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
-            contents=contents,
+            prompt=final_prompt,
             config={"number_of_images": 1, "aspect_ratio": "1:1"}
         )
         
@@ -260,9 +280,9 @@ def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None)
 
 # --- UYGULAMA AKIŞI ---
 
-# 1. GÖRSEL GEÇMİŞİ BAŞLATMA (Multi-Image Core)
+# 1. GÖRSEL GEÇMİŞİ BAŞLATMA
 if "generated_img_list" not in st.session_state:
-    st.session_state["generated_img_list"] = [] # Artık bir liste tutuyoruz
+    st.session_state["generated_img_list"] = [] 
 
 if "last_prompt" not in st.session_state:
     st.session_state["last_prompt"] = ""
@@ -308,11 +328,11 @@ st.markdown(f"""
 # GİRİŞ ALANI (Liste boşsa göster)
 if not st.session_state["generated_img_list"]:
     
-    # KART 1: Fikir Alanı (Yerleşim değişti, emoji kalktı)
+    # KART 1: Fikir Alanı
     with st.container():
         st.markdown("### 1. Describe Your Idea")
         
-        # Prompt alanı artık üstte
+        # Prompt alanı üstte
         user_prompt = st.text_area("What do you want to create or change?", height=120, placeholder="E.g. 'A geometric wolf' OR if image uploaded: 'Remove background, make clouds Japanese style'...")
         
         st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
@@ -327,7 +347,6 @@ if not st.session_state["generated_img_list"]:
             else:
                  st.session_state["uploaded_ref_image"] = None
 
-        
         if st.session_state["uploaded_ref_image"] is None:
             st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
             if st.button("🎲 Need Inspiration? (Random Idea)", type="secondary", use_container_width=True):
@@ -364,13 +383,12 @@ if not st.session_state["generated_img_list"]:
         else:
             spinner_text = "Creating detailed stencil..."
             if st.session_state["uploaded_ref_image"] is not None:
-                spinner_text = "Processing image and applying changes..."
+                spinner_text = "Analyzing image and redesigning..."
                 
             with st.spinner(spinner_text):
                 new_credits = deduct_credit(user, credits)
                 img, err = generate_tattoo_stencil(user_prompt, style, placement, st.session_state["uploaded_ref_image"])
                 if img:
-                    # YENİ: Görseli listeye EKLE (Append), eskiyi silme.
                     st.session_state["generated_img_list"].append(img)
                     st.session_state["last_prompt"] = user_prompt
                     st.session_state["last_style"] = style
@@ -380,40 +398,32 @@ if not st.session_state["generated_img_list"]:
                     st.rerun()
                 else: st.error(err)
 
-# SONUÇ EKRANI (ÇOKLU GÖRSEL GÖSTERİMİ)
+# SONUÇ EKRANI (ÇOKLU GÖRSEL)
 else:
     st.markdown("<h2 style='text-align:center;'>Your Designs 🔥</h2>", unsafe_allow_html=True)
     
-    # Tüm görselleri yanyana (mobilde alt alta 2'li ızgara) göster
     images = st.session_state["generated_img_list"]
     num_images = len(images)
     
-    # Görselleri 2'şerli gruplar halinde gösterelim ki mobilde çok sıkışmasın
     for i in range(0, num_images, 2):
         cols = st.columns(2)
-        # 1. Görsel
         with cols[0]:
             st.image(images[i], caption=f"Design {i+1}", use_column_width=True)
             st.markdown(get_image_download_link(images[i], f"fallink_design_{i+1}.png", "📥 Save"), unsafe_allow_html=True)
-        
-        # 2. Görsel (Eğer varsa)
         if i + 1 < num_images:
             with cols[1]:
                 st.image(images[i+1], caption=f"Design {i+2}", use_column_width=True)
                 st.markdown(get_image_download_link(images[i+1], f"fallink_design_{i+2}.png", "📥 Save"), unsafe_allow_html=True)
         st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-
     st.markdown("---")
     
-    # Email Gönderme (Sadece en son üretilen görseli gönderir)
     with st.expander("📧 Email latest design to client"):
         st.caption("Changing ideas? The last generated image will be sent.")
         customer_email = st.text_input("Customer Email", placeholder="client@example.com")
         if st.button("Send Email Now", type="primary", use_container_width=True):
             if customer_email and images:
                 with st.spinner("Sending email..."):
-                    # Listenin sonundaki görseli al
                     latest_img = images[-1]
                     buf = BytesIO()
                     latest_img.save(buf, format="PNG")
@@ -444,7 +454,6 @@ else:
                     new_credits = deduct_credit(user, credits)
                     img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
                     if img:
-                        # YENİ: Refine edilen görseli de listeye EKLE.
                         st.session_state["generated_img_list"].append(img)
                         st.session_state["last_prompt"] = new_prompt_input
                         st.session_state["last_style"] = new_style
@@ -453,8 +462,7 @@ else:
                     else: st.error(err)
 
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    # "Start Fresh" butonu artık listeyi temizliyor
     if st.button("Start Fresh (Clear All Designs)", type="secondary", use_container_width=True):
-        st.session_state["generated_img_list"] = [] # Listeyi boşalt
+        st.session_state["generated_img_list"] = [] 
         st.session_state["uploaded_ref_image"] = None
         st.rerun()
