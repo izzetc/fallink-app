@@ -41,7 +41,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM (Emojiler temizlendi, modern hover eklendi) ---
+# --- CSS TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -62,13 +62,6 @@ st.markdown("""
         border: 1px solid #333;
         padding: 20px;
         margin-bottom: 15px;
-    }
-
-    div[data-testid="stFileUploader"] {
-        padding: 10px;
-        border: 1px dashed #555;
-        border-radius: 12px;
-        text-align: center;
     }
 
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
@@ -95,7 +88,7 @@ st.markdown("""
         display: inline-block;
     }
     
-    /* Butonlar (Emojiler temizlendi) */
+    /* Butonlar */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -103,10 +96,10 @@ st.markdown("""
         padding: 16px 24px !important;
         border: none !important;
         font-weight: 700 !important;
-        font-size: 16px !important; /* Yazı boyutu biraz küçültüldü */
+        font-size: 16px !important;
         box-shadow: 0 4px 15px rgba(138, 43, 226, 0.4) !important;
         width: 100%;
-        text-transform: uppercase; /* Daha ciddi görünüm */
+        text-transform: uppercase;
     }
     
     .stButton > button[kind="secondary"] {
@@ -207,7 +200,6 @@ def render_hover_image(img_pil, filename, unique_id):
         </a>
     </div>
     """
-    # HTML'i render et (Yükseklik kare görsel için ayarlandı)
     components.html(html_code, height=320)
 
 def send_email_with_design(to_email, img_buffer, prompt):
@@ -249,8 +241,8 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- ANA AI FONKSİYONU (KURALLAR GÜÇLENDİRİLDİ) ---
-def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None):
+# --- ANA AI FONKSİYONU (TEXT ONLY - STABLE) ---
+def generate_tattoo_stencil(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         style_details = {
@@ -272,40 +264,20 @@ def generate_tattoo_stencil(user_prompt, style, placement, input_pil_image=None)
         }
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        # --- GÖRSEL YÜKLEME MANTIĞI (VISION TO TEXT) ---
-        
-        if input_pil_image:
-            # 1. ADIM: GEMINI'YE GÖRSELİ ANALİZ ETTİR
-            vision_prompt = f"""
-            Analyze this image for a tattoo design reference.
-            User instruction for modification: "{user_prompt}".
-            Describe the main subject and composition in high detail, applying the user's changes.
-            Focus on describing it as a blackwork tattoo stencil design.
-            """
-            
-            vision_response = client.models.generate_content(
-                model="gemini-2.0-flash-exp",
-                contents=[input_pil_image, vision_prompt]
-            )
-            ai_generated_description = vision_response.text
-            base_prompt = f"Tattoo stencil design based on: {ai_generated_description}. Placement flow context: {placement}."
-            
-        else:
-            # Görsel yoksa direkt metni kullan
-            base_prompt = f"A highly detailed, finished digital tattoo design stencil showing: {user_prompt}. Placement flow context: {placement}."
+        base_prompt = f"A highly detailed, finished digital tattoo design stencil (Procreate style) showing: {user_prompt}. Placement flow context: {placement}."
 
-        # --- KRİTİK TEKNİK ZORUNLULUKLAR (ARTIK ÇOK DAHA SERT) ---
-        # Bu kurallar her seferinde prompt'un sonuna eklenir ve AI'yı zorlar.
+        # --- KRİTİK TEKNİK ZORUNLULUKLAR ---
         technical_requirements = (
             "CRITICAL OUTPUT RULES: The final image MUST be a clean, black ink tattoo stencil on plain white paper. "
             "Do NOT generate realistic skin, body parts, blood, or redness. "
-            "Do NOT use colors other than black ink, even if prompted (interpret colors as shades of black/grey linework). "
-            "The style must be a finished flash design ready for transfer."
+            "Do NOT use colors other than black ink. "
+            "The style must be a finished flash design ready for transfer. "
+            "Show ONLY the isolated design."
         )
         
         final_prompt = f"{base_prompt} Style details: {selected_style_description}. {technical_requirements}"
 
-        # 2. ADIM: IMAGEN İLE ÇİZİM
+        # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
             prompt=final_prompt,
@@ -329,9 +301,6 @@ if "last_prompt" not in st.session_state:
     st.session_state["last_prompt"] = ""
     st.session_state["last_style"] = "Fine Line" 
     st.session_state["last_placement"] = "Arm"
-    
-if "uploaded_ref_image" not in st.session_state:
-    st.session_state["uploaded_ref_image"] = None
 
 # 2. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
@@ -373,26 +342,14 @@ if not st.session_state["generated_img_list"]:
     with st.container():
         st.markdown("### 1. Describe Concept")
         
-        user_prompt = st.text_area("What do you want to create or change?", height=120, placeholder="E.g. 'A geometric wolf' OR if image uploaded: 'Remove background, make clouds Japanese style'...")
+        user_prompt = st.text_area("What do you want to create?", height=120, placeholder="E.g. 'A geometric wolf'...")
         
         st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-        # Fotoğraf yükleme alanı
-        with st.expander("Upload Reference Image (Optional)", expanded=False):
-            uploaded_file = st.file_uploader("Choose an image to modify...", type=["jpg", "png", "jpeg"])
-            if uploaded_file is not None:
-                st.session_state["uploaded_ref_image"] = Image.open(uploaded_file)
-                st.image(st.session_state["uploaded_ref_image"], caption="Reference Image", width=150)
-                st.caption("💡 Now describe how you want to change this image above.")
-            else:
-                 st.session_state["uploaded_ref_image"] = None
-
-        if st.session_state["uploaded_ref_image"] is None:
-            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-            if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
-                ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
-                user_prompt = random.choice(ideas)
-                st.info(f"Idea selected. Edit above if needed.")
+        if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
+            ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
+            user_prompt = random.choice(ideas)
+            st.info(f"Idea selected. Edit above if needed.")
 
     # KART 2: Seçenekler
     with st.container():
@@ -413,32 +370,23 @@ if not st.session_state["generated_img_list"]:
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
     # ANA BUTON
-    btn_text = "GENERATE STENCIL (1 Credit)"
-    if st.session_state["uploaded_ref_image"] is not None:
-        btn_text = "MODIFY IMAGE (1 Credit)"
-
-    if st.button(btn_text, type="primary", use_container_width=True):
+    if st.button("GENERATE STENCIL (1 Credit)", type="primary", use_container_width=True):
         if credits < 1: st.error("You're out of credits. Please top up.")
-        elif not user_prompt and st.session_state["uploaded_ref_image"] is None: st.warning("Please describe your idea or upload an image.")
+        elif not user_prompt: st.warning("Please describe your idea.")
         else:
-            spinner_text = "Creating detailed stencil..."
-            if st.session_state["uploaded_ref_image"] is not None:
-                spinner_text = "Analyzing image and redesigning..."
-                
-            with st.spinner(spinner_text):
+            with st.spinner("Creating detailed stencil..."):
                 new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_stencil(user_prompt, style, placement, st.session_state["uploaded_ref_image"])
+                img, err = generate_tattoo_stencil(user_prompt, style, placement)
                 if img:
                     st.session_state["generated_img_list"].append(img)
                     st.session_state["last_prompt"] = user_prompt
                     st.session_state["last_style"] = style
                     st.session_state["last_placement"] = placement
                     st.session_state["credits"] = new_credits
-                    st.session_state["uploaded_ref_image"] = None 
                     st.rerun()
                 else: st.error(err)
 
-# SONUÇ EKRANI (ÇOKLU GÖRSEL - YENİ HOVER TASARIMI)
+# SONUÇ EKRANI (ÇOKLU GÖRSEL)
 else:
     st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
     st.caption("Click image to zoom. Hover for download icon.")
@@ -446,18 +394,14 @@ else:
     images = st.session_state["generated_img_list"]
     num_images = len(images)
     
-    # Görselleri 2'li ızgara şeklinde göster, yeni render fonksiyonunu kullan
+    # Görselleri 2'li ızgara şeklinde göster
     for i in range(0, num_images, 2):
         cols = st.columns(2)
-        # 1. Görsel
         with cols[0]:
-            # Benzersiz ID üret (i)
             render_hover_image(images[i], f"fallink_design_{i+1}.png", i)
         
-        # 2. Görsel (Eğer varsa)
         if i + 1 < num_images:
             with cols[1]:
-                # Benzersiz ID üret (i+1)
                 render_hover_image(images[i+1], f"fallink_design_{i+2}.png", i+1)
         st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
@@ -497,7 +441,7 @@ else:
              else:
                  with st.spinner("Generating new version..."):
                     new_credits = deduct_credit(user, credits)
-                    # Refine işleminde de katı kurallar uygulanacak
+                    # Text-only üretim
                     img, err = generate_tattoo_stencil(new_prompt_input, new_style, st.session_state["last_placement"])
                     if img:
                         st.session_state["generated_img_list"].append(img)
@@ -510,5 +454,4 @@ else:
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
     if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
-        st.session_state["uploaded_ref_image"] = None
         st.rerun()
