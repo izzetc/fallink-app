@@ -41,7 +41,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM (NÜKLEER TEMİZLİK DAHİL) ---
+# --- CSS TASARIM ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -309,7 +309,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU (PROMPT GÜNCELLENDİ - METİN SORUNU ÇÖZÜLDÜ) ---
+# --- ANA AI FONKSİYONU (GÜÇLENDİRİLMİŞ ANTI-TEXT) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -359,17 +359,19 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- YENİ PROMPT YAPISI (Metin Yazmayı Engellemek İçin) ---
-        # "FORCE STYLE" gibi emir kipleri kaldırıldı. Daha betimleyici bir dil kullanıldı.
+        # --- KRİTİK PROMPT MÜDAHALESİ (ANTI-TEXT DAHİL) ---
+        # Stil ismini (örn: Fine Line) promptun içinden çıkardık ki yapay zeka onu yazı sanmasın.
+        # Sadece stilin TARİFİNİ kullanıyoruz.
         final_prompt = (
-            f"A professional tattoo flash design of {user_prompt}, rendered strictly in the {style} style. "
-            f"The aesthetic is defined as: {selected_style_desc}. "
+            f"A professional tattoo flash design of {user_prompt}. "
+            f"The aesthetic style is defined exactly as: {selected_style_desc}. "
             f"The overall composition is {shape_instruction}. "
             "The image shows ONLY the isolated artwork centered on a plain white background. "
             "It contains NO human body parts, skin, or models. "
-            "It contains NO text, style labels, or watermarks. "
+            "CRITICAL: The design must remain completely free of any letters, numbers, words, or style labels. "
+            "Any objects that typically contain text (such as cards, banners, books) must be left blank or filled only with illustrative patterns matching the style. "
             "It uses only black ink with high contrast, ready for transfer stenciling."
-            f"Any style descriptors in the subject description conflicting with {style} are ignored."
+            f"Any style descriptors in the subject description conflicting with the defined aesthetic are ignored."
         )
 
         # IMAGEN ÇAĞRISI
@@ -454,7 +456,6 @@ if not st.session_state["generated_img_list"]:
         
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
 
-        # PLACEMENT SEÇİMİ (Flow/Shape için)
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
         
