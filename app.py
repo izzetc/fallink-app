@@ -41,21 +41,29 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM ---
+# --- CSS TASARIM (NÜKLEER TEMİZLİK DAHİL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
+    /* --- GENEL --- */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         background-color: #121212 !important;
         color: #E0E0E0 !important;
     }
-
     .stApp {
         background-color: #121212;
     }
+
+    /* --- NÜKLEER TEMİZLİK (REKLAMLARI GİZLEME) --- */
+    footer {visibility: hidden !important; display: none !important; height: 0px !important;}
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    .stDeployButton {display:none !important;}
+    .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="stToolbar"] {display: none !important;}
     
+    /* --- BİLEŞENLER --- */
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
         background-color: #1E1E1E;
         border-radius: 16px;
@@ -76,6 +84,7 @@ st.markdown("""
         color: #FFF !important;
     }
     
+    /* Logo */
     .fallink-logo {
         font-family: 'Inter', sans-serif;
         font-weight: 800;
@@ -87,6 +96,7 @@ st.markdown("""
         display: inline-block;
     }
     
+    /* Butonlar */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -108,15 +118,11 @@ st.markdown("""
         font-weight: 600 !important;
         width: 100%;
     }
-
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    .stDeployButton {display:none;}
     
+    /* Padding ayarı */
     .block-container {
         padding-top: 2rem !important;
-        padding-bottom: 3rem !important;
+        padding-bottom: 1rem !important;
         max-width: 600px;
     }
     
@@ -219,8 +225,6 @@ def deduct_credit(username, current_credits):
     except: return current_credits
 
 # --- NÖTRLEŞTİRİLMİŞ RANDOM PROMPTLAR ---
-# Stil kelimeleri (realistic, traditional, shading, dotwork vb.) tamamen temizlendi.
-# Sadece "NE" olduğu kaldı.
 def get_random_prompt():
     prompts = [
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
@@ -305,12 +309,12 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU ---
+# --- ANA AI FONKSİYONU (PROMPT GÜNCELLENDİ - METİN SORUNU ÇÖZÜLDÜ) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # --- STİL DETAYLARI (GÜÇLENDİRİLDİ) ---
+        # --- STİL DETAYLARI ---
         style_details = {
             "Fine Line": "Extremely thin single needle lines, minimalist, NO shading, NO heavy blacks, delicate, elegant, airy, outline only.",
             "Micro Realism": "Photorealistic detail in small scale, sophisticated soft grey shading, depth, 3D effect, complex textures.",
@@ -355,16 +359,17 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- GÜÇLENDİRİLMİŞ PROMPT VE STİL ZORLAMASI ---
+        # --- YENİ PROMPT YAPISI (Metin Yazmayı Engellemek İçin) ---
+        # "FORCE STYLE" gibi emir kipleri kaldırıldı. Daha betimleyici bir dil kullanıldı.
         final_prompt = (
-            f"**STYLE:** {style} ({selected_style_desc}). "
-            f"**SUBJECT:** {user_prompt}. "
-            f"**COMPOSITION:** {shape_instruction}. "
-            "**RULES:** "
-            f"1. FORCE STYLE: The style MUST be {style.upper()}. If the subject description contains conflicting style terms (like 'dark', 'heavy', 'shading', 'sketchy') IGNORE THEM and apply {style}. "
-            "2. ISOLATED ARTWORK: Draw on a plain white background. NO skin, NO body parts. "
-            "3. NO COLORS: Use only black ink. "
-            "4. QUALITY: High resolution professional tattoo flash."
+            f"A professional tattoo flash design of {user_prompt}, rendered strictly in the {style} style. "
+            f"The aesthetic is defined as: {selected_style_desc}. "
+            f"The overall composition is {shape_instruction}. "
+            "The image shows ONLY the isolated artwork centered on a plain white background. "
+            "It contains NO human body parts, skin, or models. "
+            "It contains NO text, style labels, or watermarks. "
+            "It uses only black ink with high contrast, ready for transfer stenciling."
+            f"Any style descriptors in the subject description conflicting with {style} are ignored."
         )
 
         # IMAGEN ÇAĞRISI
@@ -513,8 +518,9 @@ else:
 
     st.markdown("---")
     
-    st.markdown("#### Refine & Create New Version")
-    st.caption("Tweak the details to generate a new version.")
+    # --- UI DEĞİŞİKLİĞİ: Başlık ve Açıklama Güncellendi ---
+    st.markdown("#### Iterate & Generate New Version")
+    st.caption("Modify concept details to generate a fresh variation. (Creates new image).")
     
     with st.container():
         new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -547,7 +553,8 @@ else:
              
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("GENERATE NEW VERSION (1 Credit)", type="primary", use_container_width=True):
+        # BUTON METNİ GÜNCELLENDİ
+        if st.button("GENERATE NEW VARIATION (1 Credit)", type="primary", use_container_width=True):
              if credits < 1: st.error("Not enough credits.")
              else:
                  with st.spinner("Generating new version..."):
