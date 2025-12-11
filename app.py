@@ -309,7 +309,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU (GÜÇLENDİRİLMİŞ ANTI-TEXT) ---
+# --- ANA AI FONKSİYONU ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -359,9 +359,7 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- KRİTİK PROMPT MÜDAHALESİ (ANTI-TEXT DAHİL) ---
-        # Stil ismini (örn: Fine Line) promptun içinden çıkardık ki yapay zeka onu yazı sanmasın.
-        # Sadece stilin TARİFİNİ kullanıyoruz.
+        # --- KRİTİK PROMPT MÜDAHALESİ ---
         final_prompt = (
             f"A professional tattoo flash design of {user_prompt}. "
             f"The aesthetic style is defined exactly as: {selected_style_desc}. "
@@ -520,8 +518,8 @@ else:
     st.markdown("---")
     
     # --- UI DEĞİŞİKLİĞİ: Başlık ve Açıklama Güncellendi ---
-    st.markdown("#### Iterate & Generate New Version")
-    st.caption("Modify concept details to generate a fresh variation. (Creates new image).")
+    st.markdown("#### Modify & Generate New Variation")
+    st.caption("Change details of the CURRENT concept to create a new variation. (e.g., 'add shading', 'remove flowers'). To start a completely new concept, use the 'Start Fresh' button below.")
     
     with st.container():
         new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -571,7 +569,7 @@ else:
                     else: st.error(err)
 
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
+    if st.button("Start Fresh (New Concept)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
         st.session_state["last_prompt"] = ""
         st.rerun()
