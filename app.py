@@ -206,20 +206,19 @@ def render_gallery_image(image_url, prompt, date):
     """
     st.markdown(html_code, unsafe_allow_html=True)
 
-# --- SUPABASE KAYIT VE YÜKLEME ---
+# --- SUPABASE KAYIT VE YÜKLEME (DEBUG & FIX) ---
 def save_design_to_history(username, img_pil, prompt, style):
     try:
-        # 1. Resmi Supabase Storage'a Yükle (MEVCUT BUCKET KULLANILIYOR)
+        # 1. Resmi Supabase Storage'a Yükle
         bucket_name = "generated-tattoos" 
         file_name = f"{username}_{uuid.uuid4()}.png"
         
-        # PIL Image'ı byte'a çevir
         buff = BytesIO()
         img_pil.save(buff, format="PNG")
         image_bytes = buff.getvalue()
         
         # Yükleme işlemi
-        supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
+        res = supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
         
         # 2. Resmin URL'ini al
         image_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
@@ -234,12 +233,12 @@ def save_design_to_history(username, img_pil, prompt, style):
         supabase.table("user_designs").insert(data).execute()
         return True
     except Exception as e:
-        print(f"Save error: {e}")
+        # Hata varsa ekrana yazdır ki görelim (Lansmandan sonra kaldırılabilir)
+        st.error(f"Kayıt Hatası: {str(e)}")
         return False
 
 def get_user_gallery(username):
     try:
-        # Son eklenenler en üstte olsun
         response = supabase.table("user_designs").select("*").eq("username", username).order("created_at", desc=True).execute()
         return response.data
     except:
@@ -284,7 +283,7 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- RANDOM PROMPT ---
+# --- NÖTRLEŞTİRİLMİŞ RANDOM PROMPTLAR ---
 def get_random_prompt():
     prompts = [
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
@@ -369,7 +368,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU ---
+# --- ANA AI FONKSİYONU (ANTI-FILLER & GÜVENLİK) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -394,6 +393,7 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         selected_style_desc = style_details.get(style, "clean professional tattoo design")
 
+        # --- YERLEŞİM (PLACEMENT) ÇEVİRİSİ ---
         placement_shape_map = {
             "Forearm (Inner)": "vertical and narrow composition",
             "Forearm (Outer)": "vertical and elongated composition",
@@ -417,6 +417,7 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
+        # --- GÜÇLENDİRİLMİŞ PROMPT (ANTI-FILLER) ---
         final_prompt = (
             f"**STYLE:** {style} ({selected_style_desc}). "
             f"**SUBJECT:** {user_prompt}. "
@@ -429,6 +430,7 @@ def generate_tattoo_design(user_prompt, style, placement):
             "5. QUALITY: High resolution professional tattoo flash."
         )
 
+        # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
             prompt=final_prompt,
@@ -550,6 +552,7 @@ with tab1:
             st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
         st.markdown("---")
+        # Refine Kısmı (Aynı kalıyor)
         st.markdown("#### Modify & Generate New Variation")
         with st.container():
             new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -591,6 +594,7 @@ with tab1:
 # --- TAB 2: GALERİ (GEÇMİŞ) ---
 with tab2:
     st.markdown("### Your Gallery")
+    # Veritabanından çek
     user_designs = get_user_gallery(user)
     
     if not user_designs:
