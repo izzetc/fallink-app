@@ -218,7 +218,7 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- RANDOM PROMPT FONKSİYONU ---
+# --- RANDOM PROMPT ---
 def get_random_prompt():
     prompts = [
         "A hyper-realistic lion portrait roaring, wearing a royal crown encrusted with jewels. The mane should fade into geometric shapes and mandalas at the bottom. High contrast black and grey shading with intense eye detail.",
@@ -229,19 +229,13 @@ def get_random_prompt():
         "A minimalist single-line drawing of two faces kissing, forming a heart shape in the negative space. The line should be continuous and fluid, creating an abstract and artistic look.",
         "A creepy-cute tarot card design of 'The Moon', featuring a skeleton cat sitting on a crescent moon. Surrounded by twinkling stars and occult symbols. Woodcut engraving style with cross-hatching.",
         "A fierce Viking warrior skull with a long braided beard and a cracked helmet. Two crossed battle axes behind the skull. Nordic runes engraved on the forehead. Blackwork style with gritty texture.",
-        "A serene jellyfish floating in space, with tentacles turning into constellations and galaxy dust. Dotwork shading style (stippling) to create a soft, ethereal glow effect.",
         "A detailed compass rose with a world map in the background. An arrow piercing through the center pointing North. Travel theme with coordinates written in a typewriter font.",
         "A geometric wolf head split down the middle. The left side is realistic fur texture, the right side is low-poly geometric wireframe. Connecting the two sides with glitch effects.",
-        "A mythical Phoenix rising from ashes, wings spread wide. The feathers should turn into flames at the tips. Dynamic composition with a sense of movement. Illustrative black and grey style.",
         "A neo-traditional lady face with a gypsy headscarf and large hoop earrings. She is crying tears that turn into diamonds. Surrounded by old-school roses and a dagger.",
-        "A spooky haunted house on a hill with bats flying out of the chimney. A full moon in the background with a silhouette of a witch. Dark art style with heavy black fill.",
-        "An anatomical heart with flowers blooming out of the arteries and veins. The heart should look realistic, while the flowers are delicate and illustrative. Exploring the balance of life and death.",
         "A cyberpunk geisha with half of her face robotic, showing wires and circuits underneath the skin. Wearing traditional kimono but with futuristic neon-style patterns (in black ink).",
         "A detailed hourglass where the sand is flowing upwards, defying gravity. Inside the bottom glass is a skull, top glass has a tree of life. Symbolizing time and rebirth.",
         "A realistic eye crying a galaxy. The iris should look like a black hole sucking in light. The tears are stars and planets dripping down. Surrealism style.",
-        "A fierce tiger prowling through bamboo stalks. Japanese traditional style with bold wind bars and cherry blossoms falling around. Dynamic pose showing muscle definition.",
         "A snake wrapped tightly around a dagger, with its mouth open showing fangs. The dagger handle is ornate and jeweled. Traditional Old School style with bold lines.",
-        "A whimsical Alice in Wonderland theme features the Cheshire Cat grinning in a tree, with a melting clock and playing cards falling around. Sketchy, illustrative style.",
         "A wise owl perched on a stack of vintage books, wearing reading glasses. A quill pen and ink pot nearby. Symbolizing wisdom and knowledge. Engraving style.",
         "A Medusa head with snakes for hair, eyes turning to stone. The expression should be terrifying yet beautiful. High contrast realism with focus on the texture of the snakes.",
         "A majestic eagle swooping down with talons out, ready to strike. American Traditional style with bold lines and heavy shading on the wings.",
@@ -249,31 +243,21 @@ def get_random_prompt():
         "A roaring bear standing on its hind legs, with a mountain landscape inside its silhouette. Double exposure style, blending animal and nature.",
         "A cyber-sigilism tribal pattern running down the spine. Sharp, aggressive spikes and flowing chrome-like curves. Y2K futuristic aesthetic.",
         "A realistic portrait of a Greek statue (David or Zeus) that is cracked and broken, revealing a golden skeleton underneath (in black/grey). Vaporwave aesthetic.",
-        "A cute astronaut sitting on a swing that hangs from a planet. Stars and comets in the background. Minimalist line art style.",
         "A detailed ship in a bottle, tossing in stormy waves. The bottle is cracked and leaking water. Traditional style with cross-hatching.",
         "A sacred geometry mandala with a lotus flower in the center. Intricate symmetry and precise lines. Dotwork shading for depth.",
         "A grim reaper playing chess with a human. The board is set on a tombstone. Dark, gothic style with heavy shadows.",
         "A koi fish swimming upstream, transforming into a dragon. Symbolizing perseverance. Japanese Irezumi style with wave backgrounds.",
-        "A minimalist mountain range with a pine forest reflection in a lake below. Enclosed in a diamond geometric shape. Clean fine lines.",
-        "A vintage microphone with musical notes and roses wrapping around the stand. Realistic style, perfect for a musician.",
         "A raven perched on top of a human skull. The skull has a candle melting on top of it. Poe-inspired gothic literature theme.",
-        "A detailed spider web with a dew drop in the center reflecting a skull. Spooky and intricate. Fine line style.",
         "An Egyptian Anubis god in profile, holding a staff. Hieroglyphs in the background. Stone texture effect.",
-        "A whimsical hot air balloon where the balloon is actually a giant human brain. Steampunk style with gears and pipes.",
         "A realistic hand holding a tarot card. The card is 'Death' but depicts a new beginning. Mystical style.",
-        "A cherry blossom branch blowing in the wind. Petals falling dynamically. Soft shading, very delicate and feminine.",
         "A fierce gladiator helmet with two crossed swords behind it. Roman numerals for a date underneath. Realistic metallic texture.",
         "A tree of life with roots extending deep into the ground and branches reaching high. Celtic knots integrated into the bark.",
-        "A broken chain with a bird flying free from it. Symbolizing freedom. Sketch style with loose lines.",
-        "A realistic portrait of a pet dog (French Bulldog) wearing a tuxedo and monocle. Funny and detailed.",
         "A DNA helix where the strands are made of tree branches and leaves. Combining science and nature.",
         "A retro cassette tape with the tape ribbon pulled out, forming the word 'Music'. 80s nostalgia style.",
         "A detailed feather turning into a flock of birds flying away at the tip. Silhouette style.",
         "A lighthouse standing strong against giant crashing waves. Traditional style with bold outlines.",
         "A weeping angel statue covering its face. Stone texture and moss details. Gothic atmosphere.",
-        "A barcode melting into liquid drips. Cyberpunk / Glitch art style.",
         "A majestic elephant head with Indian mandala patterns decorating its trunk and ears. Ornamental style.",
-        "A classic pin-up girl sitting on a bomb. WWII bomber nose art style. Old school traditional.",
         "A detailed scorpion ready to strike. Realistic texture on the shell. 3D shadow effect.",
         "A phases of the moon cycle (full to new) arranged vertically. Minimalist dotwork.",
         "A spooky bat with wings spread, hanging upside down from a branch. Gothic engraving style.",
@@ -284,21 +268,13 @@ def get_random_prompt():
         "A detailed map of Middle Earth (Lord of the Rings style). Aged paper texture look.",
         "A hummingbird drinking nectar from a hibiscus flower. frozen in flight. High detail.",
         "A set of knuckles with 'STAY TRUE' written in Old English font. Chicano lettering style.",
-        "A scary clown face (It style) peeking out from a sewer grate. Horror realism.",
         "A majestic horse galloping, mane flowing in the wind. Sketchy artistic style.",
         "A detailed rosary bead necklace with a cross. Realistic shadows to look like it's resting on skin.",
-        "A butterfly where one wing is normal and the other is made of flowers. Surreal nature.",
-        "A yin yang symbol made of two koi fishes. Balance and harmony.",
         "A detailed chess piece (King) that is falling over. Checkmate concept.",
-        "A sunflower field with a sunset in the background. Framed in a circle.",
         "A mystical crystal ball with a fortune teller's hands around it. Smoke inside the ball.",
-        "A detailed grand piano with sheet music flying around. Artistic music theme.",
-        "A cute ghost holding a flower. Cartoon new school style.",
         "A fierce shark with mouth open, breaking through the water surface. Realistic water effects.",
         "A detailed dragonfly with intricate lace patterns on its wings.",
-        "A minimalist skyline of New York City. Single line drawing.",
         "A pair of angel wings. Highly detailed feather texture.",
-        "A retro robot toy. Vintage sci-fi style.",
         "A detailed anatomical skull with a crown of roses. Life and death contrast."
     ]
     return random.choice(prompts)
@@ -308,40 +284,69 @@ def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # Stil açıklamaları
+        # --- STİL DETAYLARI (AI'ya stilin ne olduğunu öğretiyoruz) ---
         style_details = {
-            "Fine Line": "Intricate ultra-thin single needle lines, high precision, delicate details, elegant composition, clean blackwork.",
-            "Micro Realism": "Highly detailed micro realism, sophisticated soft grey shading, photographic quality, depth, complex textures.",
-            "Dotwork/Mandala": "Complex stippling texture, precise pointillism, intricate sacred geometry patterns, detailed shading through dots.",
-            "Old School (Traditional)": "Bold clean outlines, solid heavy black shading, highly detailed classic iconography, high contrast.",
-            "Sketch/Abstract": "Detailed artistic pencil sketch style, expressive lines, cross-hatching shading, dynamic composition.",
-            "Tribal/Blackwork": "Intricate solid black patterns, complex Polynesian or modern ornamental shapes, high contrast, heavy saturation.",
-            "Japanese (Irezumi)": "Highly detailed traditional Japanese style, complex background elements (waves/clouds), bold flowing outlines.",
-            "Geometric": "Complex mathematical shapes, intricate sacred geometry, sacred patterns, precise sharp lines, detailed architectural feel.",
-            "Watercolor": "Detailed black and grey ink wash style, complex liquid textures, artistic drips, soft gradients mimicking watercolor painting.",
-            "Neo-Traditional": "Highly detailed illustrated realism, varying line weights, decorative filigree, complex composition.",
-            "Trash Polka": "Complex chaotic composition, detailed realism elements mixed with abstract brush strokes and typography, high energy.",
-            "Cyber Sigilism": "Intricate futuristic sharp lines, complex aggressive patterns, Y2K aesthetic, detailed chrome-like texture feel.",
-            "Chicano": "Highly detailed black and grey fine art, complex shading, realistic portraits or script, rich cultural details.",
-            "Engraving/Woodcut": "Highly intricate vintage illustration style, dense cross-hatching shading, linocut texture, detailed antique print look.",
-            "Minimalist": "Clean, precise, highly refined simple lines. Detail through perfect composition and negative space."
+            "Fine Line": "ultra-thin single needle lines, minimalist shading, high precision, delicate details, clean blackwork, no bold borders.",
+            "Micro Realism": "photorealistic detail in small scale, sophisticated soft grey shading, depth, 3D effect, complex textures.",
+            "Dotwork/Mandala": "stippling texture, pointillism, intricate sacred geometry patterns, shading created strictly by dots, no solid grey fill.",
+            "Old School (Traditional)": "bold thick black outlines, limited shading, iconic flat 2D look, high contrast, vintage tattoo flash style.",
+            "Sketch/Abstract": "pencil sketch texture, rough artistic lines, cross-hatching shading, dynamic composition, unfinished artistic edges.",
+            "Tribal/Blackwork": "solid black fill, heavy bold shapes, maori or polynesian influence, high contrast, negative space patterns.",
+            "Japanese (Irezumi)": "traditional japanese fluid style, waves, wind bars, bold flowing outlines, atmospheric background.",
+            "Geometric": "mathematical shapes, polygons, sharp straight lines, architectural precision, symmetry, sacred geometry.",
+            "Watercolor": "black and grey ink wash style, liquid textures, artistic drips, soft gradients mimicking watercolor painting (in black ink).",
+            "Neo-Traditional": "illustrative realism, varying line weights, art nouveau influence, decorative filigree, detailed but with outlines.",
+            "Trash Polka": "chaotic composition, realism mixed with abstract brush strokes and bold typography, high energy, collage style.",
+            "Cyber Sigilism": "futuristic sharp spikes, aggressive flowing lines, Y2K aesthetic, chrome-like texture feel, bio-mechanical.",
+            "Chicano": "smooth black and grey shading, fine script lettering, realistic portraits, soft shadows, street culture aesthetic.",
+            "Engraving/Woodcut": "vintage illustration style, dense cross-hatching shading, linocut texture, antique book print look.",
+            "Minimalist": "extremely simple, very few lines, symbolic, clean, lots of white negative space, outline only."
         }
         
-        selected_style_description = style_details.get(style, "High detail tattoo design")
+        selected_style_desc = style_details.get(style, "clean professional tattoo design")
 
-        # --- YENİ GÜÇLENDİRİLMİŞ PROMPT YAPISI ---
-        # Stili cümlenin en başına "Design a [STYLE] tattoo..." şeklinde koyduk.
-        base_prompt = f"Design a professional {style} tattoo of: {user_prompt}. The design flow matches a '{placement}' placement, BUT show ONLY the isolated artwork on white paper."
-
-        technical_requirements = (
-            "CRITICAL OUTPUT RULES: The final image MUST show ONLY the isolated tattoo artwork centered on a plain white background. "
-            "It must NOT show any human body parts, skin, arms, legs, or models. "
-            "Do NOT generate realistic skin textures, blood, or redness. "
-            "The style must be a clean, finished black ink flash design ready for transfer. "
-            f"Adhere strictly to the {style} style characteristics: {selected_style_description}"
-        )
+        # --- YERLEŞİM (PLACEMENT) ÇEVİRİSİ ---
+        # "Kol" kelimesini AI'ya göndermiyoruz, "Şekil" gönderiyoruz.
+        placement_shape_map = {
+            "Forearm (Inner)": "vertical and narrow composition",
+            "Forearm (Outer)": "vertical and elongated composition",
+            "Upper Arm / Bicep": "vertical oval composition",
+            "Shoulder": "rounded or cap-like composition",
+            "Chest": "wide horizontal composition",
+            "Back (Upper)": "broad expansive composition",
+            "Back (Full)": "large vertical detailed composition",
+            "Spine": "long thin vertical composition",
+            "Ribs / Side": "curved vertical composition",
+            "Thigh": "large vertical oval composition",
+            "Calf": "vertical tapered composition",
+            "Ankle": "small horizontal band or spot composition",
+            "Wrist": "small delicate horizontal composition",
+            "Hand": "compact diamond or circular composition",
+            "Finger": "tiny vertical minimal composition",
+            "Neck": "vertical narrow composition",
+            "Behind Ear": "small curved composition",
+            "Other (Custom)": "balanced centered composition"
+        }
         
-        final_prompt = f"{base_prompt} {technical_requirements}"
+        # Kullanıcının seçimi "Other" ise ve elle yazdıysa onu kullanma, varsayılanı kullan
+        if placement in placement_shape_map:
+            shape_instruction = placement_shape_map[placement]
+        else:
+            shape_instruction = "balanced centered composition"
+
+        # --- GÜÇLENDİRİLMİŞ PROMPT ---
+        # 1. Stil En Başta
+        # 2. Vücut parçası yasak
+        # 3. Shape bilgisi var
+        final_prompt = (
+            f"**STYLE: {style} ({selected_style_desc})**. "
+            f"Design a professional tattoo stencil of: {user_prompt}. "
+            f"**COMPOSITION:** {shape_instruction}. "
+            "**REQUIREMENTS:** Create a high-contrast black and white 2D vector graphic. "
+            "Draw ONLY the artwork on a plain white background. "
+            "DO NOT draw any human body parts, skin, arms, or models. "
+            "The image must be a clean, isolated flash design ready for transfer."
+        )
 
         # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
@@ -410,14 +415,13 @@ if not st.session_state["generated_img_list"]:
     with st.container():
         st.markdown("### 1. Describe Concept")
         
-        # Random butonu
         if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
             st.session_state["last_prompt"] = get_random_prompt()
             st.rerun() 
 
         user_prompt = st.text_area("What do you want to create?", height=120, value=st.session_state["last_prompt"], placeholder="E.g. 'A geometric wolf'...")
         
-    # KART 2: Seçenekler (Placement burada)
+    # KART 2: Seçenekler
     with st.container():
         st.markdown("### 2. Customize Details")
         
@@ -426,7 +430,7 @@ if not st.session_state["generated_img_list"]:
         
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
 
-        # PLACEMENT SEÇİMİ
+        # PLACEMENT SEÇİMİ (Flow/Shape için)
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
         
