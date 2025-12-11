@@ -218,7 +218,7 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- 80 ADET DETAYLI PINTEREST POPÜLER DÖVME FİKİRLERİ ---
+# --- RANDOM PROMPT FONKSİYONU ---
 def get_random_prompt():
     prompts = [
         "A hyper-realistic lion portrait roaring, wearing a royal crown encrusted with jewels. The mane should fade into geometric shapes and mandalas at the bottom. High contrast black and grey shading with intense eye detail.",
@@ -307,6 +307,8 @@ def get_random_prompt():
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
+        
+        # Stil açıklamaları
         style_details = {
             "Fine Line": "Intricate ultra-thin single needle lines, high precision, delicate details, elegant composition, clean blackwork.",
             "Micro Realism": "Highly detailed micro realism, sophisticated soft grey shading, photographic quality, depth, complex textures.",
@@ -324,20 +326,22 @@ def generate_tattoo_design(user_prompt, style, placement):
             "Engraving/Woodcut": "Highly intricate vintage illustration style, dense cross-hatching shading, linocut texture, detailed antique print look.",
             "Minimalist": "Clean, precise, highly refined simple lines. Detail through perfect composition and negative space."
         }
+        
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        # --- YENİ PROMPT MANTIĞI ---
-        # Placement'ı sadece şekil/akış (Flow) için kullanıyoruz. Asla çizdirmiyoruz.
-        base_prompt = f"A highly detailed, professional tattoo design showing: {user_prompt}. The design flow and shape is optimized for a '{placement}' placement, BUT show ONLY the isolated artwork on white paper."
+        # --- YENİ GÜÇLENDİRİLMİŞ PROMPT YAPISI ---
+        # Stili cümlenin en başına "Design a [STYLE] tattoo..." şeklinde koyduk.
+        base_prompt = f"Design a professional {style} tattoo of: {user_prompt}. The design flow matches a '{placement}' placement, BUT show ONLY the isolated artwork on white paper."
 
         technical_requirements = (
             "CRITICAL OUTPUT RULES: The final image MUST show ONLY the isolated tattoo artwork centered on a plain white background. "
             "It must NOT show any human body parts, skin, arms, legs, or models. "
             "Do NOT generate realistic skin textures, blood, or redness. "
-            "The style must be a clean, finished black ink flash design ready for transfer."
+            "The style must be a clean, finished black ink flash design ready for transfer. "
+            f"Adhere strictly to the {style} style characteristics: {selected_style_description}"
         )
         
-        final_prompt = f"{base_prompt} Style details: {selected_style_description}. {technical_requirements}"
+        final_prompt = f"{base_prompt} {technical_requirements}"
 
         # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
@@ -358,7 +362,7 @@ def generate_tattoo_design(user_prompt, style, placement):
 if "generated_img_list" not in st.session_state:
     st.session_state["generated_img_list"] = [] 
 
-# State'leri başlatırken varsayılan değerleri ata
+# State'leri başlat
 if "last_prompt" not in st.session_state:
     st.session_state["last_prompt"] = ""
 if "last_style" not in st.session_state:
@@ -406,15 +410,14 @@ if not st.session_state["generated_img_list"]:
     with st.container():
         st.markdown("### 1. Describe Concept")
         
-        # Random butonu, text_area'nın değerini güncelleyecek
+        # Random butonu
         if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
             st.session_state["last_prompt"] = get_random_prompt()
-            st.rerun() # Değeri kutuya yansıtmak için sayfayı yenile
+            st.rerun() 
 
-        # Text area session state'ten değer alır
         user_prompt = st.text_area("What do you want to create?", height=120, value=st.session_state["last_prompt"], placeholder="E.g. 'A geometric wolf'...")
         
-    # KART 2: Seçenekler (PLACEMENT EKLENDİ)
+    # KART 2: Seçenekler (Placement burada)
     with st.container():
         st.markdown("### 2. Customize Details")
         
@@ -423,7 +426,7 @@ if not st.session_state["generated_img_list"]:
         
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
 
-        # PLACEMENT GERİ GELDİ (Sadece Flow için)
+        # PLACEMENT SEÇİMİ
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
         
@@ -441,7 +444,6 @@ if not st.session_state["generated_img_list"]:
         else:
             with st.spinner("Creating tattoo design..."):
                 new_credits = deduct_credit(user, credits)
-                # Placement artık fonksiyona gidiyor
                 img, err = generate_tattoo_design(user_prompt, style, placement)
                 if img:
                     st.session_state["generated_img_list"].append(img)
@@ -496,7 +498,6 @@ else:
         
         style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
         
-        # Hata önleyici index bulma
         try:
             current_style_idx = style_options_refine.index(st.session_state["last_style"])
         except:
@@ -504,12 +505,9 @@ else:
             
         new_style = st.selectbox("Change Style", style_options_refine, index=current_style_idx)
         
-        # Placement seçimi burada da var
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         
-        # Eski seçimi hatırlama
         try:
-            # Eğer custom bir şey yazıldıysa onu listede bulamayız, varsayılan 0 olsun
             if st.session_state["last_placement"] in placement_options:
                 current_place_idx = placement_options.index(st.session_state["last_placement"])
             else:
@@ -544,5 +542,5 @@ else:
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
     if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
-        st.session_state["last_prompt"] = "" # Promptu da temizle
+        st.session_state["last_prompt"] = ""
         st.rerun()
