@@ -41,21 +41,37 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- CSS TASARIM ---
+# --- CSS TASARIM (NÜKLEER TEMİZLİK) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
+    /* --- GENEL --- */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         background-color: #121212 !important;
         color: #E0E0E0 !important;
     }
-
     .stApp {
         background-color: #121212;
     }
+
+    /* --- NÜKLEER TEMİZLİK (REKLAMLARI GİZLEME) --- */
+    /* 1. En alttaki 'Built with Streamlit' yazısını ve balonu gizle */
+    footer {visibility: hidden !important; display: none !important; height: 0px !important;}
     
+    /* 2. Sağ üstteki Hamburger Menüyü ve 'Deploy' butonunu gizle */
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    .stDeployButton {display:none !important;}
+    
+    /* 3. Üstteki renkli çizgiyi (Header) gizle */
+    header {visibility: hidden !important; display: none !important;}
+    
+    /* 4. Iframe embed modunda çıkan alt barı (Viewer Badge) gizle */
+    .viewerBadge_container__1QSob {display: none !important;}
+    div[data-testid="stToolbar"] {display: none !important;}
+    
+    /* --- BİLEŞENLER --- */
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
         background-color: #1E1E1E;
         border-radius: 16px;
@@ -76,6 +92,7 @@ st.markdown("""
         color: #FFF !important;
     }
     
+    /* Logo */
     .fallink-logo {
         font-family: 'Inter', sans-serif;
         font-weight: 800;
@@ -87,6 +104,7 @@ st.markdown("""
         display: inline-block;
     }
     
+    /* Butonlar */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -108,15 +126,11 @@ st.markdown("""
         font-weight: 600 !important;
         width: 100%;
     }
-
-    header {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    .stDeployButton {display:none;}
     
+    /* Padding ayarı */
     .block-container {
         padding-top: 2rem !important;
-        padding-bottom: 3rem !important;
+        padding-bottom: 1rem !important;
         max-width: 600px;
     }
     
@@ -218,93 +232,8 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- 80 ADET DETAYLI PINTEREST POPÜLER DÖVME FİKİRLERİ ---
-def get_random_prompt():
-    prompts = [
-        "A hyper-realistic lion portrait roaring, wearing a royal crown encrusted with jewels. The mane should fade into geometric shapes and mandalas at the bottom. High contrast black and grey shading with intense eye detail.",
-        "A delicate floral bouquet featuring peonies, roses, and lavender stems tied together with a thin ribbon. Fine line style with minimal shading, focusing on the intricate details of the petals and leaves.",
-        "A majestic stag standing in a misty forest, with antlers branching out into tree roots that connect to the earth. Double exposure style mixing nature scenery within the silhouette of the animal.",
-        "An intricate pocket watch with exposed mechanical gears and springs, surrounded by smoke and rose petals. The time is set to 5:00. Realism style with deep shadows and metallic textures.",
-        "A Japanese dragon winding around a samurai sword (Katana). The scales should be highly detailed with traditional waves and clouds in the background. Irezumi style with bold outlines and heavy black shading.",
-        "A minimalist single-line drawing of two faces kissing, forming a heart shape in the negative space. The line should be continuous and fluid, creating an abstract and artistic look.",
-        "A creepy-cute tarot card design of 'The Moon', featuring a skeleton cat sitting on a crescent moon. Surrounded by twinkling stars and occult symbols. Woodcut engraving style with cross-hatching.",
-        "A fierce Viking warrior skull with a long braided beard and a cracked helmet. Two crossed battle axes behind the skull. Nordic runes engraved on the forehead. Blackwork style with gritty texture.",
-        "A serene jellyfish floating in space, with tentacles turning into constellations and galaxy dust. Dotwork shading style (stippling) to create a soft, ethereal glow effect.",
-        "A detailed compass rose with a world map in the background. An arrow piercing through the center pointing North. Travel theme with coordinates written in a typewriter font.",
-        "A geometric wolf head split down the middle. The left side is realistic fur texture, the right side is low-poly geometric wireframe. Connecting the two sides with glitch effects.",
-        "A mythical Phoenix rising from ashes, wings spread wide. The feathers should turn into flames at the tips. Dynamic composition with a sense of movement. Illustrative black and grey style.",
-        "A neo-traditional lady face with a gypsy headscarf and large hoop earrings. She is crying tears that turn into diamonds. Surrounded by old-school roses and a dagger.",
-        "A spooky haunted house on a hill with bats flying out of the chimney. A full moon in the background with a silhouette of a witch. Dark art style with heavy black fill.",
-        "An anatomical heart with flowers blooming out of the arteries and veins. The heart should look realistic, while the flowers are delicate and illustrative. Exploring the balance of life and death.",
-        "A cyberpunk geisha with half of her face robotic, showing wires and circuits underneath the skin. Wearing traditional kimono but with futuristic neon-style patterns (in black ink).",
-        "A detailed hourglass where the sand is flowing upwards, defying gravity. Inside the bottom glass is a skull, top glass has a tree of life. Symbolizing time and rebirth.",
-        "A realistic eye crying a galaxy. The iris should look like a black hole sucking in light. The tears are stars and planets dripping down. Surrealism style.",
-        "A fierce tiger prowling through bamboo stalks. Japanese traditional style with bold wind bars and cherry blossoms falling around. Dynamic pose showing muscle definition.",
-        "A snake wrapped tightly around a dagger, with its mouth open showing fangs. The dagger handle is ornate and jeweled. Traditional Old School style with bold lines.",
-        "A whimsical Alice in Wonderland theme features the Cheshire Cat grinning in a tree, with a melting clock and playing cards falling around. Sketchy, illustrative style.",
-        "A wise owl perched on a stack of vintage books, wearing reading glasses. A quill pen and ink pot nearby. Symbolizing wisdom and knowledge. Engraving style.",
-        "A Medusa head with snakes for hair, eyes turning to stone. The expression should be terrifying yet beautiful. High contrast realism with focus on the texture of the snakes.",
-        "A majestic eagle swooping down with talons out, ready to strike. American Traditional style with bold lines and heavy shading on the wings.",
-        "A delicate moth with a skull pattern on its wings. Beneath it, phases of the moon. Witchy, mystical vibe with fine dotwork shading.",
-        "A roaring bear standing on its hind legs, with a mountain landscape inside its silhouette. Double exposure style, blending animal and nature.",
-        "A cyber-sigilism tribal pattern running down the spine. Sharp, aggressive spikes and flowing chrome-like curves. Y2K futuristic aesthetic.",
-        "A realistic portrait of a Greek statue (David or Zeus) that is cracked and broken, revealing a golden skeleton underneath (in black/grey). Vaporwave aesthetic.",
-        "A cute astronaut sitting on a swing that hangs from a planet. Stars and comets in the background. Minimalist line art style.",
-        "A detailed ship in a bottle, tossing in stormy waves. The bottle is cracked and leaking water. Traditional style with cross-hatching.",
-        "A sacred geometry mandala with a lotus flower in the center. Intricate symmetry and precise lines. Dotwork shading for depth.",
-        "A grim reaper playing chess with a human. The board is set on a tombstone. Dark, gothic style with heavy shadows.",
-        "A koi fish swimming upstream, transforming into a dragon. Symbolizing perseverance. Japanese Irezumi style with wave backgrounds.",
-        "A minimalist mountain range with a pine forest reflection in a lake below. Enclosed in a diamond geometric shape. Clean fine lines.",
-        "A vintage microphone with musical notes and roses wrapping around the stand. Realistic style, perfect for a musician.",
-        "A raven perched on top of a human skull. The skull has a candle melting on top of it. Poe-inspired gothic literature theme.",
-        "A detailed spider web with a dew drop in the center reflecting a skull. Spooky and intricate. Fine line style.",
-        "An Egyptian Anubis god in profile, holding a staff. Hieroglyphs in the background. Stone texture effect.",
-        "A whimsical hot air balloon where the balloon is actually a giant human brain. Steampunk style with gears and pipes.",
-        "A realistic hand holding a tarot card. The card is 'Death' but depicts a new beginning. Mystical style.",
-        "A cherry blossom branch blowing in the wind. Petals falling dynamically. Soft shading, very delicate and feminine.",
-        "A fierce gladiator helmet with two crossed swords behind it. Roman numerals for a date underneath. Realistic metallic texture.",
-        "A tree of life with roots extending deep into the ground and branches reaching high. Celtic knots integrated into the bark.",
-        "A broken chain with a bird flying free from it. Symbolizing freedom. Sketch style with loose lines.",
-        "A realistic portrait of a pet dog (French Bulldog) wearing a tuxedo and monocle. Funny and detailed.",
-        "A DNA helix where the strands are made of tree branches and leaves. Combining science and nature.",
-        "A retro cassette tape with the tape ribbon pulled out, forming the word 'Music'. 80s nostalgia style.",
-        "A detailed feather turning into a flock of birds flying away at the tip. Silhouette style.",
-        "A lighthouse standing strong against giant crashing waves. Traditional style with bold outlines.",
-        "A weeping angel statue covering its face. Stone texture and moss details. Gothic atmosphere.",
-        "A barcode melting into liquid drips. Cyberpunk / Glitch art style.",
-        "A majestic elephant head with Indian mandala patterns decorating its trunk and ears. Ornamental style.",
-        "A classic pin-up girl sitting on a bomb. WWII bomber nose art style. Old school traditional.",
-        "A detailed scorpion ready to strike. Realistic texture on the shell. 3D shadow effect.",
-        "A phases of the moon cycle (full to new) arranged vertically. Minimalist dotwork.",
-        "A spooky bat with wings spread, hanging upside down from a branch. Gothic engraving style.",
-        "A realistic heart padlock with a skeleton key. The keyhole glows. Symbolizing a locked heart.",
-        "A paper crane origami figure. Geometric lines and shading to show paper folds.",
-        "A intricate dreamcatcher with feathers and beads. Realistic texture.",
-        "A fierce panther crawling down, claws out. Traditional Panther tattoo style.",
-        "A detailed map of Middle Earth (Lord of the Rings style). Aged paper texture look.",
-        "A hummingbird drinking nectar from a hibiscus flower. frozen in flight. High detail.",
-        "A set of knuckles with 'STAY TRUE' written in Old English font. Chicano lettering style.",
-        "A scary clown face (It style) peeking out from a sewer grate. Horror realism.",
-        "A majestic horse galloping, mane flowing in the wind. Sketchy artistic style.",
-        "A detailed rosary bead necklace with a cross. Realistic shadows to look like it's resting on skin.",
-        "A butterfly where one wing is normal and the other is made of flowers. Surreal nature.",
-        "A yin yang symbol made of two koi fishes. Balance and harmony.",
-        "A detailed chess piece (King) that is falling over. Checkmate concept.",
-        "A sunflower field with a sunset in the background. Framed in a circle.",
-        "A mystical crystal ball with a fortune teller's hands around it. Smoke inside the ball.",
-        "A detailed grand piano with sheet music flying around. Artistic music theme.",
-        "A cute ghost holding a flower. Cartoon new school style.",
-        "A fierce shark with mouth open, breaking through the water surface. Realistic water effects.",
-        "A detailed dragonfly with intricate lace patterns on its wings.",
-        "A minimalist skyline of New York City. Single line drawing.",
-        "A pair of angel wings. Highly detailed feather texture.",
-        "A retro robot toy. Vintage sci-fi style.",
-        "A detailed anatomical skull with a crown of roses. Life and death contrast."
-    ]
-    return random.choice(prompts)
-
 # --- ANA AI FONKSİYONU ---
-def generate_tattoo_design(user_prompt, style, placement):
+def generate_tattoo_design(user_prompt, style):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         style_details = {
@@ -326,20 +255,17 @@ def generate_tattoo_design(user_prompt, style, placement):
         }
         selected_style_description = style_details.get(style, "High detail tattoo design")
 
-        # --- YENİ PROMPT MANTIĞI ---
-        # Placement'ı sadece şekil/akış (Flow) için kullanıyoruz. Asla çizdirmiyoruz.
-        base_prompt = f"A highly detailed, professional tattoo design showing: {user_prompt}. The design flow and shape is optimized for a '{placement}' placement, BUT show ONLY the isolated artwork on white paper."
+        base_prompt = f"A highly detailed, professional tattoo design showing: {user_prompt}. The design is isolated centered artwork, ready for a flash sheet."
 
         technical_requirements = (
             "CRITICAL OUTPUT RULES: The final image MUST show ONLY the isolated tattoo artwork centered on a plain white background. "
             "It must NOT show any human body parts, skin, arms, legs, or models. "
             "Do NOT generate realistic skin textures, blood, or redness. "
-            "The style must be a clean, finished black ink flash design ready for transfer."
+            "The style must be a clean, finished black ink flash design. No photo-realism of body parts."
         )
         
         final_prompt = f"{base_prompt} Style details: {selected_style_description}. {technical_requirements}"
 
-        # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
             prompt=final_prompt,
@@ -355,16 +281,15 @@ def generate_tattoo_design(user_prompt, style, placement):
 
 # --- UYGULAMA AKIŞI ---
 
+# 1. GÖRSEL GEÇMİŞİ BAŞLATMA
 if "generated_img_list" not in st.session_state:
     st.session_state["generated_img_list"] = [] 
 
-# State'leri başlatırken varsayılan değerleri ata
 if "last_prompt" not in st.session_state:
     st.session_state["last_prompt"] = ""
 if "last_style" not in st.session_state:
     st.session_state["last_style"] = "Fine Line"
-if "last_placement" not in st.session_state:
-    st.session_state["last_placement"] = "Forearm (Inner)"
+# Placement artık sadece UI için
 
 # 2. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
@@ -406,15 +331,15 @@ if not st.session_state["generated_img_list"]:
     with st.container():
         st.markdown("### 1. Describe Concept")
         
-        # Random butonu, text_area'nın değerini güncelleyecek
         if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
-            st.session_state["last_prompt"] = get_random_prompt()
-            st.rerun() # Değeri kutuya yansıtmak için sayfayı yenile
-
-        # Text area session state'ten değer alır
+            ideas = ["A geometric wolf howling at a crescent moon", "Minimalist paper plane flying through clouds", "Realistic eye crying a galaxy", "Snake wrapped around a vintage dagger", "Koi fish swimming in a yin yang pattern", "Clock melting over a tree branch (Dali style)", "Astronaut sitting on a swing in space", "Skeleton hand holding a red rose", "Phoenix rising from ashes, watercolor style", "Compass with mountains inside", "Lion head with a crown of thorns", "Hourglass with sand turning into birds", "Samurai mask with cherry blossoms", "Cyberpunk geisha portrait", "Detailed map of Middle Earth", "Hummingbird drinking from a hibiscus flower", "Viking ship in a storm", "Medusa head with stone eyes", "Anchor entangled with octopus tentacles", "Tarot card 'The Moon' design", "Geometric deer head with antlers transforming into trees", "Single line drawing of a cat", "Moth with skull pattern on wings", "Phonograph playing musical notes", "Pocket watch with exposed gears", "Tree of life with deep roots", "Raven perched on a skull", "Abstract soundwave of a heartbeat", "Barcode melting into liquid", "Chess piece (King) falling over", "Spartan helmet with spears", "Feather turning into a flock of birds", "Lotus flower unalome", "Dragon wrapping around the arm", "Butterfly with one wing as flowers", "Vintage camera illustration", "Micro realistic bee", "Portrait of a Greek statue broken", "Cyber sigilism pattern on spine", "Trash polka style heart and arrows", "Egyptian Anubis god profile", "Nordic runes circle", "Sword piercing a heart", "Alien spaceship beaming up a cow", "Jellyfish floating in space", "Owl with piercing eyes", "Grim reaper playing chess", "Angel wings on back", "Dna helix made of tree branches", "Retro cassette tape"]
+            user_prompt = random.choice(ideas)
+            st.info(f"Idea selected. Edit above if needed.")
+        
+        # Değeri session state'ten al
         user_prompt = st.text_area("What do you want to create?", height=120, value=st.session_state["last_prompt"], placeholder="E.g. 'A geometric wolf'...")
         
-    # KART 2: Seçenekler (PLACEMENT EKLENDİ)
+    # KART 2: Seçenekler
     with st.container():
         st.markdown("### 2. Customize Details")
         
@@ -423,7 +348,6 @@ if not st.session_state["generated_img_list"]:
         
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
 
-        # PLACEMENT GERİ GELDİ (Sadece Flow için)
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
         
@@ -434,25 +358,22 @@ if not st.session_state["generated_img_list"]:
 
     st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    # ANA BUTON
     if st.button("GENERATE DESIGN (1 Credit)", type="primary", use_container_width=True):
         if credits < 1: st.error("You're out of credits. Please top up.")
         elif not user_prompt: st.warning("Please describe your idea.")
         else:
             with st.spinner("Creating tattoo design..."):
                 new_credits = deduct_credit(user, credits)
-                # Placement artık fonksiyona gidiyor
-                img, err = generate_tattoo_design(user_prompt, style, placement)
+                img, err = generate_tattoo_design(user_prompt, style)
                 if img:
                     st.session_state["generated_img_list"].append(img)
                     st.session_state["last_prompt"] = user_prompt
                     st.session_state["last_style"] = style
-                    st.session_state["last_placement"] = placement
                     st.session_state["credits"] = new_credits
                     st.rerun()
                 else: st.error(err)
 
-# SONUÇ EKRANI (ÇOKLU GÖRSEL)
+# SONUÇ EKRANI
 else:
     st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
     st.caption("Click image to zoom. Hover for download icon.")
@@ -496,7 +417,6 @@ else:
         
         style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
         
-        # Hata önleyici index bulma
         try:
             current_style_idx = style_options_refine.index(st.session_state["last_style"])
         except:
@@ -504,16 +424,11 @@ else:
             
         new_style = st.selectbox("Change Style", style_options_refine, index=current_style_idx)
         
-        # Placement seçimi burada da var
         placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
         
-        # Eski seçimi hatırlama
+        # Placement seçimi
         try:
-            # Eğer custom bir şey yazıldıysa onu listede bulamayız, varsayılan 0 olsun
-            if st.session_state["last_placement"] in placement_options:
-                current_place_idx = placement_options.index(st.session_state["last_placement"])
-            else:
-                current_place_idx = 0 
+            current_place_idx = 0 # Default
         except:
             current_place_idx = 0
 
@@ -531,12 +446,11 @@ else:
              else:
                  with st.spinner("Generating new version..."):
                     new_credits = deduct_credit(user, credits)
-                    img, err = generate_tattoo_design(new_prompt_input, new_style, new_placement)
+                    img, err = generate_tattoo_design(new_prompt_input, new_style)
                     if img:
                         st.session_state["generated_img_list"].append(img)
                         st.session_state["last_prompt"] = new_prompt_input
                         st.session_state["last_style"] = new_style
-                        st.session_state["last_placement"] = new_placement
                         st.session_state["credits"] = new_credits
                         st.rerun()
                     else: st.error(err)
@@ -544,5 +458,5 @@ else:
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
     if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
-        st.session_state["last_prompt"] = "" # Promptu da temizle
+        st.session_state["last_prompt"] = ""
         st.rerun()
