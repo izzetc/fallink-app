@@ -46,7 +46,6 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
-    /* --- GENEL --- */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
         background-color: #121212 !important;
@@ -56,14 +55,13 @@ st.markdown("""
         background-color: #121212;
     }
 
-    /* --- NÜKLEER TEMİZLİK (REKLAMLARI GİZLEME) --- */
+    /* --- TEMİZLİK --- */
     footer {visibility: hidden !important; display: none !important; height: 0px !important;}
     #MainMenu {visibility: hidden !important; display: none !important;}
     .stDeployButton {display:none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="stToolbar"] {display: none !important;}
     
-    /* --- BİLEŞENLER --- */
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
         background-color: #1E1E1E;
         border-radius: 16px;
@@ -84,7 +82,6 @@ st.markdown("""
         color: #FFF !important;
     }
     
-    /* Logo */
     .fallink-logo {
         font-family: 'Inter', sans-serif;
         font-weight: 800;
@@ -96,7 +93,6 @@ st.markdown("""
         display: inline-block;
     }
     
-    /* Butonlar */
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -119,7 +115,6 @@ st.markdown("""
         width: 100%;
     }
     
-    /* Padding ayarı */
     .block-container {
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
@@ -230,39 +225,39 @@ def get_random_prompt():
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
         "A delicate floral bouquet featuring peonies, roses, and lavender stems tied together.",
         "A majestic stag standing in a forest, with antlers branching out into tree roots.",
-        "An intricate pocket watch with exposed mechanical gears and springs, surrounded by roses.",
+        "An intricate pocket watch with exposed mechanical gears and springs.",
         "A dragon winding around a samurai sword (Katana).",
         "A minimalist drawing of two faces kissing, forming a heart shape.",
-        "A skeleton cat sitting on a crescent moon. Surrounded by twinkling stars.",
+        "A skeleton cat sitting on a crescent moon.",
         "A Viking warrior skull with a long braided beard and a cracked helmet.",
         "A jellyfish floating in space, with tentacles turning into constellations.",
-        "A compass rose with a world map in the background. An arrow pointing North.",
+        "A compass rose with a world map in the background.",
         "A wolf head split down the middle. Left side fur, right side geometric wireframe.",
-        "A Phoenix rising from ashes, wings spread wide. Feathers turning into flames.",
+        "A Phoenix rising from ashes, wings spread wide.",
         "A lady face with a gypsy headscarf and large hoop earrings.",
         "A haunted house on a hill with bats flying out of the chimney.",
         "An anatomical heart with flowers blooming out of the arteries and veins.",
-        "A geisha with half of her face robotic, showing wires underneath the skin.",
-        "An hourglass where the sand is flowing upwards. Skull at bottom, tree at top.",
-        "An eye crying a galaxy. The iris looks like a black hole.",
+        "A geisha with half of her face robotic.",
+        "An hourglass where the sand is flowing upwards.",
+        "An eye crying a galaxy.",
         "A tiger prowling through bamboo stalks.",
         "A snake wrapped around a dagger, mouth open showing fangs.",
         "Cheshire Cat grinning in a tree, with a melting clock and playing cards.",
-        "An owl perched on a stack of vintage books, wearing reading glasses.",
-        "A Medusa head with snakes for hair, eyes turning to stone.",
+        "An owl perched on a stack of vintage books.",
+        "A Medusa head with snakes for hair.",
         "An eagle swooping down with talons out.",
-        "A moth with a skull pattern on its wings. Phases of the moon beneath.",
+        "A moth with a skull pattern on its wings.",
         "A bear standing on hind legs, with a mountain landscape inside its silhouette.",
         "A pattern running down the spine with sharp spikes and curves.",
-        "A portrait of a Greek statue (David) that is cracked, revealing a skeleton.",
+        "A portrait of a Greek statue (David) that is cracked.",
         "An astronaut sitting on a swing that hangs from a planet.",
-        "A ship in a bottle, tossing in waves. The bottle is cracked.",
+        "A ship in a bottle, tossing in waves.",
         "A mandala with a lotus flower in the center.",
         "A grim reaper playing chess with a human.",
         "A koi fish swimming upstream, transforming into a dragon.",
         "A mountain range with a pine forest reflection in a lake.",
         "A vintage microphone with musical notes and roses.",
-        "A raven perched on top of a skull with a melting candle.",
+        "A raven perched on top of a skull.",
         "A spider web with a dew drop in the center reflecting a skull.",
         "An Egyptian Anubis god holding a staff.",
         "A hot air balloon where the balloon is a giant human brain.",
@@ -273,7 +268,7 @@ def get_random_prompt():
         "A broken chain with a bird flying free.",
         "A portrait of a French Bulldog wearing a tuxedo.",
         "A DNA helix made of tree branches and leaves.",
-        "A retro cassette tape with the tape ribbon spelling 'Music'.",
+        "A retro cassette tape.",
         "A feather turning into a flock of birds.",
         "A lighthouse standing against crashing waves.",
         "A weeping angel statue covering its face.",
@@ -309,12 +304,11 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU ---
+# --- ANA AI FONKSİYONU (NO FILLER GUARANTEE) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
         
-        # --- STİL DETAYLARI ---
         style_details = {
             "Fine Line": "Extremely thin single needle lines, minimalist, NO shading, NO heavy blacks, delicate, elegant, airy, outline only.",
             "Micro Realism": "Photorealistic detail in small scale, sophisticated soft grey shading, depth, 3D effect, complex textures.",
@@ -329,7 +323,7 @@ def generate_tattoo_design(user_prompt, style, placement):
             "Trash Polka": "Chaotic composition, realism mixed with abstract brush strokes and bold typography, high energy, collage style.",
             "Cyber Sigilism": "Futuristic sharp spikes, aggressive flowing lines, Y2K aesthetic, chrome-like texture feel, bio-mechanical.",
             "Chicano": "Smooth black and grey shading, fine script lettering, realistic portraits, soft shadows, street culture aesthetic.",
-            "Engraving/Woodcut": "Vintage illustration style, dense cross-hatching shading, linocut texture, antique book print look.",
+            "Engraving/Woodcut": "Vintage illustration, dense cross-hatching, linocut texture, antique book print look.",
             "Minimalist": "Extremely simple, very few lines, symbolic, clean, lots of white negative space, outline only."
         }
         
@@ -359,17 +353,17 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- KRİTİK PROMPT MÜDAHALESİ ---
+        # --- KRİTİK PROMPT MÜDAHALESİ (ANTI-FILLER) ---
         final_prompt = (
-            f"A professional tattoo flash design of {user_prompt}. "
-            f"The aesthetic style is defined exactly as: {selected_style_desc}. "
-            f"The overall composition is {shape_instruction}. "
-            "The image shows ONLY the isolated artwork centered on a plain white background. "
-            "It contains NO human body parts, skin, or models. "
-            "CRITICAL: The design must remain completely free of any letters, numbers, words, or style labels. "
-            "Any objects that typically contain text (such as cards, banners, books) must be left blank or filled only with illustrative patterns matching the style. "
-            "It uses only black ink with high contrast, ready for transfer stenciling."
-            f"Any style descriptors in the subject description conflicting with the defined aesthetic are ignored."
+            f"**STYLE:** {style} ({selected_style_desc}). "
+            f"**SUBJECT:** {user_prompt}. "
+            f"**COMPOSITION:** {shape_instruction}. "
+            "**RULES:** "
+            "1. DRAW ONLY THE SUBJECT REQUESTED. Do NOT add any unrequested filler elements like flowers, books, cards, ribbons, or backgrounds to fill space. "
+            "2. ISOLATED ARTWORK: Draw on a plain white background. NO skin, NO body parts. "
+            "3. NO TEXT: Do not write the style name or any text unless explicitly asked in the subject. "
+            "4. NO COLORS: Use only black ink. "
+            "5. QUALITY: High resolution professional tattoo flash."
         )
 
         # IMAGEN ÇAĞRISI
@@ -517,9 +511,8 @@ else:
 
     st.markdown("---")
     
-    # --- UI DEĞİŞİKLİĞİ: Başlık ve Açıklama Güncellendi ---
-    st.markdown("#### Modify & Generate New Variation")
-    st.caption("Change details of the CURRENT concept to create a new variation. (e.g., 'add shading', 'remove flowers'). To start a completely new concept, use the 'Start Fresh' button below.")
+    st.markdown("#### Refine & Create New Version")
+    st.caption("Tweak the details to generate a new version.")
     
     with st.container():
         new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -552,8 +545,7 @@ else:
              
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
         
-        # BUTON METNİ GÜNCELLENDİ
-        if st.button("GENERATE NEW VARIATION (1 Credit)", type="primary", use_container_width=True):
+        if st.button("GENERATE NEW VERSION (1 Credit)", type="primary", use_container_width=True):
              if credits < 1: st.error("Not enough credits.")
              else:
                  with st.spinner("Generating new version..."):
@@ -569,7 +561,7 @@ else:
                     else: st.error(err)
 
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    if st.button("Start Fresh (New Concept)", type="secondary", use_container_width=True):
+    if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
         st.session_state["last_prompt"] = ""
         st.rerun()
