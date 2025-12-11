@@ -5,13 +5,14 @@ from io import BytesIO
 import base64
 import time
 import random
-import uuid # Resimlere benzersiz isim vermek için
+import uuid 
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from supabase import create_client, Client
 import streamlit.components.v1 as components
+import requests # URL'den resim okumak için gerekli
 
 # --- GİZLİ BİLGİLERİ (SECRETS) ÇEKME ---
 try:
@@ -94,16 +95,6 @@ st.markdown("""
         display: inline-block;
     }
     
-    /* Sekme (Tabs) Stili */
-    button[data-baseweb="tab"] {
-        color: #888 !important;
-        font-weight: 600 !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #A855F7 !important; /* Seçili sekme mor */
-        background-color: transparent !important;
-    }
-    
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -143,14 +134,10 @@ st.markdown("""
 
 # --- YARDIMCI FONKSİYONLAR ---
 
-def image_to_base64(img_pil):
-    buff = BytesIO()
-    img_pil.save(buff, format="PNG")
-    img_str = base64.b64encode(buff.getvalue()).decode()
-    return f"data:image/png;base64,{img_str}"
-
-def render_hover_image(img_pil, filename, unique_id):
-    img_b64 = image_to_base64(img_pil)
+# Bu fonksiyon artık URL kabul ediyor ve kısa link ile çalışıyor
+def render_hover_image_from_url(image_url, filename, unique_id):
+    """Görseli URL'den alır ve tıklanabilir yapar."""
+    
     download_icon = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>"""
     
     html_code = f"""
@@ -161,6 +148,7 @@ def render_hover_image(img_pil, filename, unique_id):
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
         }}
         .img-container-{unique_id} img {{
             width: 100%;
@@ -181,35 +169,18 @@ def render_hover_image(img_pil, filename, unique_id):
         .download-btn-{unique_id}:hover {{ background-color: #A855F7; }}
     </style>
     <div class="img-container-{unique_id}">
-        <a href="{img_b64}" target="_blank" class="img-link">
-            <img src="{img_b64}" alt="Tattoo Design">
+        <a href="{image_url}" target="_blank" class="img-link">
+            <img src="{image_url}" alt="Tattoo Design">
         </a>
-        <a href="{img_b64}" download="{filename}" class="download-btn-{unique_id}" title="Download Image">
+        <a href="{image_url}" download="{filename}" class="download-btn-{unique_id}" title="Download Image">
             {download_icon}
         </a>
     </div>
     """
     components.html(html_code, height=320)
 
-# Veritabanından gelen URL için basit gösterim
-def render_gallery_image(image_url, prompt, date):
-    html_code = f"""
-    <div style="background-color: #1E1E1E; padding: 10px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333;">
-        <a href="{image_url}" target="_blank">
-            <img src="{image_url}" style="width: 100%; border-radius: 8px;">
-        </a>
-        <div style="padding-top: 8px; font-size: 12px; color: #888;">
-            {date.split('T')[0]} <br>
-            <span style="color: #ccc;">{prompt[:40]}...</span>
-        </div>
-    </div>
-    """
-    st.markdown(html_code, unsafe_allow_html=True)
-
-# --- SUPABASE KAYIT VE YÜKLEME (DEBUG & FIX) ---
 def save_design_to_history(username, img_pil, prompt, style):
     try:
-        # 1. Resmi Supabase Storage'a Yükle
         bucket_name = "generated-tattoos" 
         file_name = f"{username}_{uuid.uuid4()}.png"
         
@@ -217,13 +188,13 @@ def save_design_to_history(username, img_pil, prompt, style):
         img_pil.save(buff, format="PNG")
         image_bytes = buff.getvalue()
         
-        # Yükleme işlemi
-        res = supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
+        # Yükleme
+        supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
         
-        # 2. Resmin URL'ini al
+        # URL Alma (Halka açık link)
         image_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
         
-        # 3. Veritabanına kaydet
+        # Veritabanına Yazma
         data = {
             "username": username,
             "image_url": image_url,
@@ -231,11 +202,10 @@ def save_design_to_history(username, img_pil, prompt, style):
             "style": style
         }
         supabase.table("user_designs").insert(data).execute()
-        return True
+        return image_url # URL'yi geri döndürüyoruz ki ekranda kullanalım
     except Exception as e:
-        # Hata varsa ekrana yazdır ki görelim (Lansmandan sonra kaldırılabilir)
         st.error(f"Kayıt Hatası: {str(e)}")
-        return False
+        return None
 
 def get_user_gallery(username):
     try:
@@ -256,6 +226,8 @@ def send_email_with_design(to_email, img_buffer, prompt):
         <br><p>See you at the studio.</p><p><em>Fallink Team</em></p>
       </body></html>"""
     msg.attach(MIMEText(body, 'html', 'utf-8'))
+    # Buffer'ın başına dönmek gerekebilir
+    img_buffer.seek(0)
     image_data = img_buffer.getvalue()
     image = MIMEImage(image_data, name="fallink_design.png")
     msg.attach(image)
@@ -283,7 +255,6 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- NÖTRLEŞTİRİLMİŞ RANDOM PROMPTLAR ---
 def get_random_prompt():
     prompts = [
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
@@ -368,7 +339,6 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU (ANTI-FILLER & GÜVENLİK) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -393,7 +363,6 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         selected_style_desc = style_details.get(style, "clean professional tattoo design")
 
-        # --- YERLEŞİM (PLACEMENT) ÇEVİRİSİ ---
         placement_shape_map = {
             "Forearm (Inner)": "vertical and narrow composition",
             "Forearm (Outer)": "vertical and elongated composition",
@@ -417,7 +386,6 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- GÜÇLENDİRİLMİŞ PROMPT (ANTI-FILLER) ---
         final_prompt = (
             f"**STYLE:** {style} ({selected_style_desc}). "
             f"**SUBJECT:** {user_prompt}. "
@@ -430,7 +398,6 @@ def generate_tattoo_design(user_prompt, style, placement):
             "5. QUALITY: High resolution professional tattoo flash."
         )
 
-        # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
             prompt=final_prompt,
@@ -447,6 +414,17 @@ def generate_tattoo_design(user_prompt, style, placement):
         return None, str(e)
 
 # --- UYGULAMA AKIŞI ---
+
+# 1. GENERATED IMAGE LIST SIFIRLAMA MANTIĞI
+if "generated_img_list" not in st.session_state:
+    st.session_state["generated_img_list"] = [] 
+
+if "last_prompt" not in st.session_state:
+    st.session_state["last_prompt"] = ""
+if "last_style" not in st.session_state:
+    st.session_state["last_style"] = "Fine Line"
+if "last_placement" not in st.session_state:
+    st.session_state["last_placement"] = "Forearm (Inner)"
 
 # 2. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
@@ -486,16 +464,7 @@ tab1, tab2 = st.tabs(["Create Design", "My Gallery"])
 
 # --- TAB 1: TASARIM OLUŞTURMA ---
 with tab1:
-    if "generated_img_list" not in st.session_state:
-        st.session_state["generated_img_list"] = [] 
-    if "last_prompt" not in st.session_state:
-        st.session_state["last_prompt"] = ""
-    if "last_style" not in st.session_state:
-        st.session_state["last_style"] = "Fine Line"
-    if "last_placement" not in st.session_state:
-        st.session_state["last_placement"] = "Forearm (Inner)"
-
-    # GİRİŞ ALANI (Liste boşsa göster)
+    # GİRİŞ ALANI
     if not st.session_state["generated_img_list"]:
         
         with st.container():
@@ -527,17 +496,23 @@ with tab1:
                     new_credits = deduct_credit(user, credits)
                     img, err = generate_tattoo_design(user_prompt, style, placement)
                     if img:
-                        st.session_state["generated_img_list"].append(img)
+                        # URL'i anında al ve listeye ekle
+                        img_url = save_design_to_history(user, img, user_prompt, style)
+                        if img_url:
+                            # Listeye dictionary olarak ekliyoruz ki URL'i de tutsun
+                            st.session_state["generated_img_list"].append({
+                                "img_pil": img,
+                                "img_url": img_url
+                            })
+                        
                         st.session_state["last_prompt"] = user_prompt
                         st.session_state["last_style"] = style
                         st.session_state["last_placement"] = placement
                         st.session_state["credits"] = new_credits
-                        # OTOMATİK KAYIT
-                        save_design_to_history(user, img, user_prompt, style)
                         st.rerun()
                     else: st.error(err)
 
-    # SONUÇ EKRANI
+    # SONUÇ EKRANI (LİSTE VARSA)
     else:
         st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
         images = st.session_state["generated_img_list"]
@@ -545,14 +520,33 @@ with tab1:
         for i in range(0, num_images, 2):
             cols = st.columns(2)
             with cols[0]:
-                render_hover_image(images[i], f"fallink_design_{i+1}.png", i)
+                item = images[i]
+                # URL üzerinden render (Hızlı ve Tıklanabilir)
+                render_hover_image_from_url(item['img_url'], f"fallink_design_{i+1}.png", i)
+            
             if i + 1 < num_images:
                 with cols[1]:
-                    render_hover_image(images[i+1], f"fallink_design_{i+2}.png", i+1)
+                    item = images[i+1]
+                    render_hover_image_from_url(item['img_url'], f"fallink_design_{i+2}.png", i+1)
             st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
         st.markdown("---")
-        # Refine Kısmı (Aynı kalıyor)
+        
+        # Email Kısmı (En son görseli yollar)
+        with st.expander("Email latest design to client"):
+            customer_email = st.text_input("Customer Email", placeholder="client@example.com")
+            if st.button("Send Email Now", type="primary", use_container_width=True):
+                if customer_email and images:
+                    with st.spinner("Sending email..."):
+                        latest_item = images[-1]
+                        # PIL görselini yeniden buffer'a çevir
+                        buff = BytesIO()
+                        latest_item['img_pil'].save(buff, format="PNG")
+                        success, msg = send_email_with_design(customer_email, buff, st.session_state["last_prompt"])
+                        if success: st.success(f"Sent to {customer_email}.")
+                        else: st.error(f"Error: {msg}")
+
+        st.markdown("---")
         st.markdown("#### Modify & Generate New Variation")
         with st.container():
             new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -575,13 +569,16 @@ with tab1:
                         new_credits = deduct_credit(user, credits)
                         img, err = generate_tattoo_design(new_prompt_input, new_style, new_placement)
                         if img:
-                            st.session_state["generated_img_list"].append(img)
+                            img_url = save_design_to_history(user, img, new_prompt_input, new_style)
+                            if img_url:
+                                st.session_state["generated_img_list"].append({
+                                    "img_pil": img,
+                                    "img_url": img_url
+                                })
                             st.session_state["last_prompt"] = new_prompt_input
                             st.session_state["last_style"] = new_style
                             st.session_state["last_placement"] = new_placement
                             st.session_state["credits"] = new_credits
-                            # OTOMATİK KAYIT
-                            save_design_to_history(user, img, new_prompt_input, new_style)
                             st.rerun()
                         else: st.error(err)
 
@@ -591,10 +588,9 @@ with tab1:
             st.session_state["last_prompt"] = ""
             st.rerun()
 
-# --- TAB 2: GALERİ (GEÇMİŞ) ---
+# --- TAB 2: GALERİ (URL TABANLI - HIZLI) ---
 with tab2:
     st.markdown("### Your Gallery")
-    # Veritabanından çek
     user_designs = get_user_gallery(user)
     
     if not user_designs:
@@ -604,4 +600,4 @@ with tab2:
         cols = st.columns(num_cols)
         for idx, design in enumerate(user_designs):
             with cols[idx % num_cols]:
-                render_gallery_image(design['image_url'], design['prompt'], design['created_at'])
+                render_hover_image_from_url(design['image_url'], f"gallery_design_{idx}.png", f"gal_{idx}")
