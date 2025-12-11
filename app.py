@@ -12,7 +12,6 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from supabase import create_client, Client
 import streamlit.components.v1 as components
-import requests # URL'den resim okumak için gerekli
 
 # --- GİZLİ BİLGİLERİ (SECRETS) ÇEKME ---
 try:
@@ -57,7 +56,7 @@ st.markdown("""
         background-color: #121212;
     }
 
-    /* --- TEMİZLİK --- */
+    /* --- NÜKLEER TEMİZLİK --- */
     footer {visibility: hidden !important; display: none !important; height: 0px !important;}
     #MainMenu {visibility: hidden !important; display: none !important;}
     .stDeployButton {display:none !important;}
@@ -134,10 +133,7 @@ st.markdown("""
 
 # --- YARDIMCI FONKSİYONLAR ---
 
-# Bu fonksiyon artık URL kabul ediyor ve kısa link ile çalışıyor
 def render_hover_image_from_url(image_url, filename, unique_id):
-    """Görseli URL'den alır ve tıklanabilir yapar."""
-    
     download_icon = """<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>"""
     
     html_code = f"""
@@ -183,18 +179,11 @@ def save_design_to_history(username, img_pil, prompt, style):
     try:
         bucket_name = "generated-tattoos" 
         file_name = f"{username}_{uuid.uuid4()}.png"
-        
         buff = BytesIO()
         img_pil.save(buff, format="PNG")
         image_bytes = buff.getvalue()
-        
-        # Yükleme
         supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
-        
-        # URL Alma (Halka açık link)
         image_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
-        
-        # Veritabanına Yazma
         data = {
             "username": username,
             "image_url": image_url,
@@ -202,7 +191,7 @@ def save_design_to_history(username, img_pil, prompt, style):
             "style": style
         }
         supabase.table("user_designs").insert(data).execute()
-        return image_url # URL'yi geri döndürüyoruz ki ekranda kullanalım
+        return image_url
     except Exception as e:
         st.error(f"Kayıt Hatası: {str(e)}")
         return None
@@ -226,7 +215,6 @@ def send_email_with_design(to_email, img_buffer, prompt):
         <br><p>See you at the studio.</p><p><em>Fallink Team</em></p>
       </body></html>"""
     msg.attach(MIMEText(body, 'html', 'utf-8'))
-    # Buffer'ın başına dönmek gerekebilir
     img_buffer.seek(0)
     image_data = img_buffer.getvalue()
     image = MIMEImage(image_data, name="fallink_design.png")
@@ -255,6 +243,7 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
+# --- NÖTRLEŞTİRİLMİŞ RANDOM PROMPTLAR ---
 def get_random_prompt():
     prompts = [
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
@@ -339,6 +328,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
+# --- ANA AI FONKSİYONU (MEMORY WIPE & STRICT FOCUS) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -386,16 +376,17 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
+        # --- KRİTİK PROMPT MÜDAHALESİ (KONU ODAKLI) ---
         final_prompt = (
+            f"**SUBJECT:** A professional tattoo design of {user_prompt}. "
             f"**STYLE:** {style} ({selected_style_desc}). "
-            f"**SUBJECT:** {user_prompt}. "
             f"**COMPOSITION:** {shape_instruction}. "
-            "**RULES:** "
-            "1. DRAW ONLY THE SUBJECT REQUESTED. Do NOT add any unrequested filler elements like flowers, books, cards, ribbons, or backgrounds to fill space. "
-            "2. ISOLATED ARTWORK: Draw on a plain white background. NO skin, NO body parts. "
-            "3. NO TEXT: Do not write the style name or any text unless explicitly asked in the subject. "
-            "4. NO COLORS: Use only black ink. "
-            "5. QUALITY: High resolution professional tattoo flash."
+            "**STRICT RULES:** "
+            "1. ISOLATE THE SUBJECT: Draw ONLY the specific subject requested in the prompt. "
+            "2. NO FILLERS: Do NOT add background elements, flowers, frames, ribbons, books, or generic decorations unless explicitly asked for in the subject description. "
+            "3. NO BODY PARTS: Draw on a plain white background. No skin, arms, or models. "
+            "4. NO TEXT: Do not write any text or labels. "
+            "5. NO COLORS: Use only black ink. "
         )
 
         response = client.models.generate_images(
@@ -415,7 +406,7 @@ def generate_tattoo_design(user_prompt, style, placement):
 
 # --- UYGULAMA AKIŞI ---
 
-# 1. GENERATED IMAGE LIST SIFIRLAMA MANTIĞI
+# State'leri başlat
 if "generated_img_list" not in st.session_state:
     st.session_state["generated_img_list"] = [] 
 
@@ -464,7 +455,7 @@ tab1, tab2 = st.tabs(["Create Design", "My Gallery"])
 
 # --- TAB 1: TASARIM OLUŞTURMA ---
 with tab1:
-    # GİRİŞ ALANI
+    # GİRİŞ ALANI (Liste boşsa göster)
     if not st.session_state["generated_img_list"]:
         
         with st.container():
@@ -493,13 +484,14 @@ with tab1:
             elif not user_prompt: st.warning("Please describe your idea.")
             else:
                 with st.spinner("Creating tattoo design..."):
+                    # MEMORY WIPE & CLEAN STATE
+                    st.session_state["generated_img_list"] = [] 
+                    
                     new_credits = deduct_credit(user, credits)
                     img, err = generate_tattoo_design(user_prompt, style, placement)
                     if img:
-                        # URL'i anında al ve listeye ekle
                         img_url = save_design_to_history(user, img, user_prompt, style)
                         if img_url:
-                            # Listeye dictionary olarak ekliyoruz ki URL'i de tutsun
                             st.session_state["generated_img_list"].append({
                                 "img_pil": img,
                                 "img_url": img_url
@@ -512,7 +504,7 @@ with tab1:
                         st.rerun()
                     else: st.error(err)
 
-    # SONUÇ EKRANI (LİSTE VARSA)
+    # SONUÇ EKRANI
     else:
         st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
         images = st.session_state["generated_img_list"]
@@ -521,7 +513,6 @@ with tab1:
             cols = st.columns(2)
             with cols[0]:
                 item = images[i]
-                # URL üzerinden render (Hızlı ve Tıklanabilir)
                 render_hover_image_from_url(item['img_url'], f"fallink_design_{i+1}.png", i)
             
             if i + 1 < num_images:
@@ -532,14 +523,12 @@ with tab1:
 
         st.markdown("---")
         
-        # Email Kısmı (En son görseli yollar)
         with st.expander("Email latest design to client"):
             customer_email = st.text_input("Customer Email", placeholder="client@example.com")
             if st.button("Send Email Now", type="primary", use_container_width=True):
                 if customer_email and images:
                     with st.spinner("Sending email..."):
                         latest_item = images[-1]
-                        # PIL görselini yeniden buffer'a çevir
                         buff = BytesIO()
                         latest_item['img_pil'].save(buff, format="PNG")
                         success, msg = send_email_with_design(customer_email, buff, st.session_state["last_prompt"])
@@ -548,6 +537,7 @@ with tab1:
 
         st.markdown("---")
         st.markdown("#### Modify & Generate New Variation")
+        st.caption("Creates a new version using current settings. (Old images stay in gallery).")
         with st.container():
             new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
             style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
@@ -588,7 +578,7 @@ with tab1:
             st.session_state["last_prompt"] = ""
             st.rerun()
 
-# --- TAB 2: GALERİ (URL TABANLI - HIZLI) ---
+# --- TAB 2: GALERİ ---
 with tab2:
     st.markdown("### Your Gallery")
     user_designs = get_user_gallery(user)
