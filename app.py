@@ -55,12 +55,14 @@ st.markdown("""
         background-color: #121212;
     }
 
-    /* --- TEMİZLİK --- */
+    /* --- TEMİZLİK (FOOTER VE HEADER GİZLEME) --- */
     footer {visibility: hidden !important; display: none !important; height: 0px !important;}
     #MainMenu {visibility: hidden !important; display: none !important;}
     .stDeployButton {display:none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="stToolbar"] {display: none !important;}
+    /* Alt boşluğu kaldırmak için */
+    .reportview-container .main footer {visibility: hidden !important;}
     
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
         background-color: #1E1E1E;
@@ -117,7 +119,7 @@ st.markdown("""
     
     .block-container {
         padding-top: 2rem !important;
-        padding-bottom: 1rem !important;
+        padding-bottom: 0rem !important; /* Alt boşluk azaltıldı */
         max-width: 600px;
     }
     
@@ -304,7 +306,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU (NO FILLER GUARANTEE) ---
+# --- ANA AI FONKSİYONU (ANTI-FILLER & GÜVENLİK) ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -353,13 +355,13 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- KRİTİK PROMPT MÜDAHALESİ (ANTI-FILLER) ---
+        # --- GÜÇLENDİRİLMİŞ PROMPT (ANTI-FILLER) ---
         final_prompt = (
             f"**STYLE:** {style} ({selected_style_desc}). "
             f"**SUBJECT:** {user_prompt}. "
             f"**COMPOSITION:** {shape_instruction}. "
             "**RULES:** "
-            "1. DRAW ONLY THE SUBJECT REQUESTED. Do NOT add any unrequested filler elements like flowers, books, cards, ribbons, or backgrounds to fill space. "
+            "1. FOCUS ONLY ON THE SUBJECT: Draw strictly what is asked. Do NOT add unrequested background elements like flowers, books, clouds, or ribbons unless specified. "
             "2. ISOLATED ARTWORK: Draw on a plain white background. NO skin, NO body parts. "
             "3. NO TEXT: Do not write the style name or any text unless explicitly asked in the subject. "
             "4. NO COLORS: Use only black ink. "
@@ -376,7 +378,10 @@ def generate_tattoo_design(user_prompt, style, placement):
         if response.generated_images:
             image_bytes = response.generated_images[0].image.image_bytes
             return Image.open(BytesIO(image_bytes)), None
-        return None, "AI returned empty response."
+        
+        # Eğer buraya düşerse AI boş cevap vermiştir (Güvenlik filtresi)
+        return None, "Güvenlik Politikası: Bu içerik oluşturulamadı. Lütfen farklı bir tarif deneyin."
+        
     except Exception as e:
         return None, str(e)
 
@@ -511,8 +516,9 @@ else:
 
     st.markdown("---")
     
-    st.markdown("#### Refine & Create New Version")
-    st.caption("Tweak the details to generate a new version.")
+    # --- UI DEĞİŞİKLİĞİ: Başlık ve Açıklama Güncellendi ---
+    st.markdown("#### Modify & Generate New Variation")
+    st.caption("Change details of the CURRENT concept to create a new variation. (e.g., 'add shading', 'remove flowers'). To start a completely new concept, use the 'Start Fresh' button below.")
     
     with st.container():
         new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
@@ -545,7 +551,8 @@ else:
              
         st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("GENERATE NEW VERSION (1 Credit)", type="primary", use_container_width=True):
+        # BUTON METNİ GÜNCELLENDİ
+        if st.button("GENERATE NEW VARIATION (1 Credit)", type="primary", use_container_width=True):
              if credits < 1: st.error("Not enough credits.")
              else:
                  with st.spinner("Generating new version..."):
@@ -561,7 +568,7 @@ else:
                     else: st.error(err)
 
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    if st.button("Start Fresh (Clear All)", type="secondary", use_container_width=True):
+    if st.button("Start Fresh (New Concept)", type="secondary", use_container_width=True):
         st.session_state["generated_img_list"] = [] 
         st.session_state["last_prompt"] = ""
         st.rerun()
