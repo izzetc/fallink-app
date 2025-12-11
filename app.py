@@ -5,6 +5,7 @@ from io import BytesIO
 import base64
 import time
 import random
+import uuid # Resimlere benzersiz isim vermek için
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -55,14 +56,12 @@ st.markdown("""
         background-color: #121212;
     }
 
-    /* --- TEMİZLİK (FOOTER VE HEADER GİZLEME) --- */
+    /* --- TEMİZLİK --- */
     footer {visibility: hidden !important; display: none !important; height: 0px !important;}
     #MainMenu {visibility: hidden !important; display: none !important;}
     .stDeployButton {display:none !important;}
     .viewerBadge_container__1QSob {display: none !important;}
     div[data-testid="stToolbar"] {display: none !important;}
-    /* Alt boşluğu kaldırmak için */
-    .reportview-container .main footer {visibility: hidden !important;}
     
     div[data-testid="stContainer"], div[data-testid="stExpander"] {
         background-color: #1E1E1E;
@@ -95,6 +94,16 @@ st.markdown("""
         display: inline-block;
     }
     
+    /* Sekme (Tabs) Stili */
+    button[data-baseweb="tab"] {
+        color: #888 !important;
+        font-weight: 600 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #A855F7 !important; /* Seçili sekme mor */
+        background-color: transparent !important;
+    }
+    
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #8A2BE2, #4B0082) !important;
         color: white !important;
@@ -119,7 +128,7 @@ st.markdown("""
     
     .block-container {
         padding-top: 2rem !important;
-        padding-bottom: 0rem !important; /* Alt boşluk azaltıldı */
+        padding-bottom: 1rem !important;
         max-width: 600px;
     }
     
@@ -182,6 +191,60 @@ def render_hover_image(img_pil, filename, unique_id):
     """
     components.html(html_code, height=320)
 
+# Veritabanından gelen URL için basit gösterim
+def render_gallery_image(image_url, prompt, date):
+    html_code = f"""
+    <div style="background-color: #1E1E1E; padding: 10px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333;">
+        <a href="{image_url}" target="_blank">
+            <img src="{image_url}" style="width: 100%; border-radius: 8px;">
+        </a>
+        <div style="padding-top: 8px; font-size: 12px; color: #888;">
+            {date.split('T')[0]} <br>
+            <span style="color: #ccc;">{prompt[:40]}...</span>
+        </div>
+    </div>
+    """
+    st.markdown(html_code, unsafe_allow_html=True)
+
+# --- SUPABASE KAYIT VE YÜKLEME ---
+def save_design_to_history(username, img_pil, prompt, style):
+    try:
+        # 1. Resmi Supabase Storage'a Yükle (MEVCUT BUCKET KULLANILIYOR)
+        bucket_name = "generated-tattoos" 
+        file_name = f"{username}_{uuid.uuid4()}.png"
+        
+        # PIL Image'ı byte'a çevir
+        buff = BytesIO()
+        img_pil.save(buff, format="PNG")
+        image_bytes = buff.getvalue()
+        
+        # Yükleme işlemi
+        supabase.storage.from_(bucket_name).upload(file_name, image_bytes, {"content-type": "image/png"})
+        
+        # 2. Resmin URL'ini al
+        image_url = supabase.storage.from_(bucket_name).get_public_url(file_name)
+        
+        # 3. Veritabanına kaydet
+        data = {
+            "username": username,
+            "image_url": image_url,
+            "prompt": prompt,
+            "style": style
+        }
+        supabase.table("user_designs").insert(data).execute()
+        return True
+    except Exception as e:
+        print(f"Save error: {e}")
+        return False
+
+def get_user_gallery(username):
+    try:
+        # Son eklenenler en üstte olsun
+        response = supabase.table("user_designs").select("*").eq("username", username).order("created_at", desc=True).execute()
+        return response.data
+    except:
+        return []
+
 def send_email_with_design(to_email, img_buffer, prompt):
     msg = MIMEMultipart()
     msg['From'] = EMAIL_USER
@@ -221,7 +284,7 @@ def deduct_credit(username, current_credits):
         return new_credit
     except: return current_credits
 
-# --- NÖTRLEŞTİRİLMİŞ RANDOM PROMPTLAR ---
+# --- RANDOM PROMPT ---
 def get_random_prompt():
     prompts = [
         "A lion portrait roaring, wearing a royal crown encrusted with jewels.",
@@ -306,7 +369,7 @@ def get_random_prompt():
     ]
     return random.choice(prompts)
 
-# --- ANA AI FONKSİYONU (ANTI-FILLER & GÜVENLİK) ---
+# --- ANA AI FONKSİYONU ---
 def generate_tattoo_design(user_prompt, style, placement):
     try:
         client = genai.Client(api_key=GOOGLE_API_KEY)
@@ -331,7 +394,6 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         selected_style_desc = style_details.get(style, "clean professional tattoo design")
 
-        # --- YERLEŞİM (PLACEMENT) ÇEVİRİSİ ---
         placement_shape_map = {
             "Forearm (Inner)": "vertical and narrow composition",
             "Forearm (Outer)": "vertical and elongated composition",
@@ -355,20 +417,18 @@ def generate_tattoo_design(user_prompt, style, placement):
         
         shape_instruction = placement_shape_map.get(placement, "balanced centered composition")
 
-        # --- GÜÇLENDİRİLMİŞ PROMPT (ANTI-FILLER) ---
         final_prompt = (
             f"**STYLE:** {style} ({selected_style_desc}). "
             f"**SUBJECT:** {user_prompt}. "
             f"**COMPOSITION:** {shape_instruction}. "
             "**RULES:** "
-            "1. FOCUS ONLY ON THE SUBJECT: Draw strictly what is asked. Do NOT add unrequested background elements like flowers, books, clouds, or ribbons unless specified. "
+            "1. DRAW ONLY THE SUBJECT REQUESTED. Do NOT add any unrequested filler elements like flowers, books, cards, ribbons, or backgrounds to fill space. "
             "2. ISOLATED ARTWORK: Draw on a plain white background. NO skin, NO body parts. "
             "3. NO TEXT: Do not write the style name or any text unless explicitly asked in the subject. "
             "4. NO COLORS: Use only black ink. "
             "5. QUALITY: High resolution professional tattoo flash."
         )
 
-        # IMAGEN ÇAĞRISI
         response = client.models.generate_images(
             model="imagen-4.0-generate-001",
             prompt=final_prompt,
@@ -379,24 +439,12 @@ def generate_tattoo_design(user_prompt, style, placement):
             image_bytes = response.generated_images[0].image.image_bytes
             return Image.open(BytesIO(image_bytes)), None
         
-        # Eğer buraya düşerse AI boş cevap vermiştir (Güvenlik filtresi)
         return None, "Güvenlik Politikası: Bu içerik oluşturulamadı. Lütfen farklı bir tarif deneyin."
         
     except Exception as e:
         return None, str(e)
 
 # --- UYGULAMA AKIŞI ---
-
-if "generated_img_list" not in st.session_state:
-    st.session_state["generated_img_list"] = [] 
-
-# State'leri başlat
-if "last_prompt" not in st.session_state:
-    st.session_state["last_prompt"] = ""
-if "last_style" not in st.session_state:
-    st.session_state["last_style"] = "Fine Line"
-if "last_placement" not in st.session_state:
-    st.session_state["last_placement"] = "Forearm (Inner)"
 
 # 2. LOGIN EKRANI
 if "logged_in_user" not in st.session_state:
@@ -420,7 +468,7 @@ if "logged_in_user" not in st.session_state:
                 st.rerun()
     st.stop()
 
-# 3. STÜDYO ARAYÜZÜ
+# 3. STÜDYO ARAYÜZÜ (TAB YAPISI)
 user = st.session_state["logged_in_user"]
 credits = check_user_credits(user)
 
@@ -431,144 +479,125 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# GİRİŞ ALANI (Liste boşsa göster)
-if not st.session_state["generated_img_list"]:
-    
-    # KART 1: Fikir Alanı
-    with st.container():
-        st.markdown("### 1. Describe Concept")
-        
-        if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
-            st.session_state["last_prompt"] = get_random_prompt()
-            st.rerun() 
+# SEKME YAPISI (TABS)
+tab1, tab2 = st.tabs(["Create Design", "My Gallery"])
 
-        user_prompt = st.text_area("What do you want to create?", height=120, value=st.session_state["last_prompt"], placeholder="E.g. 'A geometric wolf'...")
-        
-    # KART 2: Seçenekler (Placement burada)
-    with st.container():
-        st.markdown("### 2. Customize Details")
-        
-        style_options = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
-        style = st.selectbox("Choose Style", style_options)
-        
-        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
+# --- TAB 1: TASARIM OLUŞTURMA ---
+with tab1:
+    if "generated_img_list" not in st.session_state:
+        st.session_state["generated_img_list"] = [] 
+    if "last_prompt" not in st.session_state:
+        st.session_state["last_prompt"] = ""
+    if "last_style" not in st.session_state:
+        st.session_state["last_style"] = "Fine Line"
+    if "last_placement" not in st.session_state:
+        st.session_state["last_placement"] = "Forearm (Inner)"
 
-        placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
-        placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
+    # GİRİŞ ALANI (Liste boşsa göster)
+    if not st.session_state["generated_img_list"]:
         
-        if placement_select == "Other (Custom)":
-            placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow")
-        else:
-            placement = placement_select
+        with st.container():
+            st.markdown("### 1. Describe Concept")
+            if st.button("Random Idea Inspiration", type="secondary", use_container_width=True):
+                st.session_state["last_prompt"] = get_random_prompt()
+                st.rerun() 
+            user_prompt = st.text_area("What do you want to create?", height=120, value=st.session_state["last_prompt"], placeholder="E.g. 'A geometric wolf'...")
+            
+        with st.container():
+            st.markdown("### 2. Customize Details")
+            style_options = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
+            style = st.selectbox("Choose Style", style_options)
+            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True) 
+            placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
+            placement_select = st.selectbox("Body Placement (Defines Flow/Shape Only)", placement_options)
+            if placement_select == "Other (Custom)":
+                placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow")
+            else:
+                placement = placement_select
 
-    st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-
-    # ANA BUTON
-    if st.button("GENERATE DESIGN (1 Credit)", type="primary", use_container_width=True):
-        if credits < 1: st.error("You're out of credits. Please top up.")
-        elif not user_prompt: st.warning("Please describe your idea.")
-        else:
-            with st.spinner("Creating tattoo design..."):
-                new_credits = deduct_credit(user, credits)
-                img, err = generate_tattoo_design(user_prompt, style, placement)
-                if img:
-                    st.session_state["generated_img_list"].append(img)
-                    st.session_state["last_prompt"] = user_prompt
-                    st.session_state["last_style"] = style
-                    st.session_state["last_placement"] = placement
-                    st.session_state["credits"] = new_credits
-                    st.rerun()
-                else: st.error(err)
-
-# SONUÇ EKRANI (ÇOKLU GÖRSEL)
-else:
-    st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
-    st.caption("Click image to zoom. Hover for download icon.")
-    
-    images = st.session_state["generated_img_list"]
-    num_images = len(images)
-    
-    for i in range(0, num_images, 2):
-        cols = st.columns(2)
-        with cols[0]:
-            render_hover_image(images[i], f"fallink_design_{i+1}.png", i)
-        
-        if i + 1 < num_images:
-            with cols[1]:
-                render_hover_image(images[i+1], f"fallink_design_{i+2}.png", i+1)
         st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-    st.markdown("---")
-    
-    with st.expander("Email latest design to client"):
-        st.caption("The last generated image will be sent.")
-        customer_email = st.text_input("Customer Email", placeholder="client@example.com")
-        if st.button("Send Email Now", type="primary", use_container_width=True):
-            if customer_email and images:
-                with st.spinner("Sending email..."):
-                    latest_img = images[-1]
-                    buf = BytesIO()
-                    latest_img.save(buf, format="PNG")
-                    buf.seek(0)
-                    success, msg = send_email_with_design(customer_email, buf, st.session_state["last_prompt"])
-                    if success: st.success(f"Sent to {customer_email}.")
-                    else: st.error(f"Error: {msg}")
-
-    st.markdown("---")
-    
-    # --- UI DEĞİŞİKLİĞİ: Başlık ve Açıklama Güncellendi ---
-    st.markdown("#### Modify & Generate New Variation")
-    st.caption("Change details of the CURRENT concept to create a new variation. (e.g., 'add shading', 'remove flowers'). To start a completely new concept, use the 'Start Fresh' button below.")
-    
-    with st.container():
-        new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
-        
-        style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
-        
-        try:
-            current_style_idx = style_options_refine.index(st.session_state["last_style"])
-        except:
-            current_style_idx = 0
-            
-        new_style = st.selectbox("Change Style", style_options_refine, index=current_style_idx)
-        
-        placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
-        
-        try:
-            if st.session_state["last_placement"] in placement_options:
-                current_place_idx = placement_options.index(st.session_state["last_placement"])
+        if st.button("GENERATE DESIGN (1 Credit)", type="primary", use_container_width=True):
+            if credits < 1: st.error("You're out of credits. Please top up.")
+            elif not user_prompt: st.warning("Please describe your idea.")
             else:
-                current_place_idx = 0 
-        except:
-            current_place_idx = 0
-
-        new_placement_select = st.selectbox("Change Body Placement", placement_options, index=current_place_idx)
-        
-        if new_placement_select == "Other (Custom)":
-            new_placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow")
-        else:
-            new_placement = new_placement_select
-             
-        st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
-        
-        # BUTON METNİ GÜNCELLENDİ
-        if st.button("GENERATE NEW VARIATION (1 Credit)", type="primary", use_container_width=True):
-             if credits < 1: st.error("Not enough credits.")
-             else:
-                 with st.spinner("Generating new version..."):
+                with st.spinner("Creating tattoo design..."):
                     new_credits = deduct_credit(user, credits)
-                    img, err = generate_tattoo_design(new_prompt_input, new_style, new_placement)
+                    img, err = generate_tattoo_design(user_prompt, style, placement)
                     if img:
                         st.session_state["generated_img_list"].append(img)
-                        st.session_state["last_prompt"] = new_prompt_input
-                        st.session_state["last_style"] = new_style
-                        st.session_state["last_placement"] = new_placement
+                        st.session_state["last_prompt"] = user_prompt
+                        st.session_state["last_style"] = style
+                        st.session_state["last_placement"] = placement
                         st.session_state["credits"] = new_credits
+                        # OTOMATİK KAYIT
+                        save_design_to_history(user, img, user_prompt, style)
                         st.rerun()
                     else: st.error(err)
 
-    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    if st.button("Start Fresh (New Concept)", type="secondary", use_container_width=True):
-        st.session_state["generated_img_list"] = [] 
-        st.session_state["last_prompt"] = ""
-        st.rerun()
+    # SONUÇ EKRANI
+    else:
+        st.markdown("<h2 style='text-align:center;'>Generated Designs</h2>", unsafe_allow_html=True)
+        images = st.session_state["generated_img_list"]
+        num_images = len(images)
+        for i in range(0, num_images, 2):
+            cols = st.columns(2)
+            with cols[0]:
+                render_hover_image(images[i], f"fallink_design_{i+1}.png", i)
+            if i + 1 < num_images:
+                with cols[1]:
+                    render_hover_image(images[i+1], f"fallink_design_{i+2}.png", i+1)
+            st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("#### Modify & Generate New Variation")
+        with st.container():
+            new_prompt_input = st.text_area("Edit concept details:", value=st.session_state["last_prompt"], height=100)
+            style_options_refine = ("Fine Line", "Micro Realism", "Dotwork/Mandala", "Old School (Traditional)", "Sketch/Abstract", "Tribal/Blackwork", "Japanese (Irezumi)", "Geometric", "Watercolor", "Neo-Traditional", "Trash Polka", "Cyber Sigilism", "Chicano", "Engraving/Woodcut", "Minimalist")
+            try: current_style_idx = style_options_refine.index(st.session_state["last_style"])
+            except: current_style_idx = 0
+            new_style = st.selectbox("Change Style", style_options_refine, index=current_style_idx)
+            placement_options = ("Forearm (Inner)", "Forearm (Outer)", "Upper Arm / Bicep", "Shoulder", "Chest", "Back (Upper)", "Back (Full)", "Spine", "Ribs / Side", "Thigh", "Calf", "Ankle", "Wrist", "Hand", "Finger", "Neck", "Behind Ear", "Other (Custom)")
+            try: current_place_idx = placement_options.index(st.session_state["last_placement"]) if st.session_state["last_placement"] in placement_options else 0
+            except: current_place_idx = 0
+            new_placement_select = st.selectbox("Change Body Placement", placement_options, index=current_place_idx)
+            new_placement = st.text_input("Specify placement flow", placeholder="e.g. Knuckles flow") if new_placement_select == "Other (Custom)" else new_placement_select
+                
+            st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+            
+            if st.button("GENERATE NEW VARIATION (1 Credit)", type="primary", use_container_width=True):
+                if credits < 1: st.error("Not enough credits.")
+                else:
+                    with st.spinner("Generating new version..."):
+                        new_credits = deduct_credit(user, credits)
+                        img, err = generate_tattoo_design(new_prompt_input, new_style, new_placement)
+                        if img:
+                            st.session_state["generated_img_list"].append(img)
+                            st.session_state["last_prompt"] = new_prompt_input
+                            st.session_state["last_style"] = new_style
+                            st.session_state["last_placement"] = new_placement
+                            st.session_state["credits"] = new_credits
+                            # OTOMATİK KAYIT
+                            save_design_to_history(user, img, new_prompt_input, new_style)
+                            st.rerun()
+                        else: st.error(err)
+
+        st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+        if st.button("Start Fresh (New Concept)", type="secondary", use_container_width=True):
+            st.session_state["generated_img_list"] = [] 
+            st.session_state["last_prompt"] = ""
+            st.rerun()
+
+# --- TAB 2: GALERİ (GEÇMİŞ) ---
+with tab2:
+    st.markdown("### Your Gallery")
+    user_designs = get_user_gallery(user)
+    
+    if not user_designs:
+        st.info("You haven't created any designs yet.")
+    else:
+        num_cols = 2
+        cols = st.columns(num_cols)
+        for idx, design in enumerate(user_designs):
+            with cols[idx % num_cols]:
+                render_gallery_image(design['image_url'], design['prompt'], design['created_at'])
