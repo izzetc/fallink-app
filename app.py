@@ -13,7 +13,7 @@ from email.mime.image import MIMEImage
 from supabase import create_client, Client
 import streamlit.components.v1 as components
 
-# --- GİZLİ BİLGİLERİ (SECRETS) ÇEKME ---
+# --- GİZLİ BİLGİLERİ (SECRETS) ÇEKmME ---
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
